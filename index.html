@@ -132,6 +132,7 @@ input[type=text],input[type=number]{width:100%;padding:9px;border:1px solid var(
 .rtop{display:grid;grid-template-columns:1fr 1fr 1.3fr;gap:8px;align-items:center;margin:10px 0 4px}.rtop span{display:block;font-size:12px;color:var(--mu)}.rtop b{font-size:22px;font-variant-numeric:tabular-nums}
 .pill{border:0;border-radius:14px;background:var(--bg);color:var(--tx);min-height:44px;font:inherit;font-size:14px;padding:0 10px}
 .r2h,.r2{display:grid;grid-template-columns:44px 1fr 1fr 1fr 46px;gap:7px;align-items:center;text-align:center}
+.rtl{display:flex;gap:8px;align-items:baseline;font-size:13px;padding:3px 0;border-bottom:1px dashed var(--ln)}.rtn{min-width:20px;color:var(--mu);font-variant-numeric:tabular-nums}.rtt{min-width:42px;font-variant-numeric:tabular-nums;color:var(--mu)}.rtx{flex:1;min-width:0}.rtg{white-space:nowrap}
 .r2h{font-size:12px;color:var(--mu);margin:8px 0 4px}
 .r2h.lr,.r2.lr{grid-template-columns:44px 1fr 1fr 1fr 1fr 46px;gap:5px}.r2.lr input[type=number]{font-size:16px}
 .sw{position:relative;overflow:hidden;border-radius:12px;touch-action:pan-y;margin-bottom:8px}
@@ -1501,13 +1502,29 @@ function mapHTML(){
    ${lu.length?lu.map(t=>{const e=EX[t.id];return e?`<div class="row" style="padding:4px 0;border-bottom:1px solid var(--ln)"><span><b style="color:${PC[e.part]}">${P[e.part]}</b> ${esc(e.name)} <span class="mu">· ${PHS[ph].ax[fxIdx(e,ph)]||''}</span></span><button class="btn ghost sm" data-act="mrmtok" data-id="${t.id}">제외</button></div>`:''}).join(''):'<div class="mu">아직 없어요</div>'}
   </div>`}
 let MQ='';
+/* 최근 운동 10가지: 트레이너는 내 회원들 수업에 많이 넣은 종목, 회원은 내가 최근 한 종목 */
+function recentEx(n){
+  const seen=new Map(),put=(id,d,o)=>{if(!id||!EX[id]||EX[id].missing||EX[id].hidden)return;const k=d+'|'+String(o).padStart(5,'0'),v=seen.get(id);if(!v||k>v)seen.set(id,k)};
+  try{
+    if(S.mode==='admin'){AD().members.forEach(m=>{const ss=memSess(m);Object.keys(ss).forEach(d=>ss[d].forEach((it,ii)=>(it.slots||[]).forEach((x,xi)=>{if(x)put(x.id,d,ii*20+xi)})))})}
+    else selfItems().forEach((x,i)=>put(x.id,x.date,i));
+  }catch(e){}
+  return [...seen.entries()].sort((a,b)=>a[1]<b[1]?1:-1).slice(0,n||10).map(e=>e[0]);
+}
+/* 자주 하는 운동: 최근 90일 사용 횟수(회원·수업 기록 기준). 부위 탭과 검색 결과에서 위로 올려요. 기록이 쌓일 때마다 자동 갱신 */
+function freqEx(){
+  const m=new Map(),from=(()=>{const d=new Date();d.setDate(d.getDate()-90);return ymd(d)})(),add=(id,d)=>{if(d>=from&&id&&EX[id]&&!EX[id].missing)m.set(id,(m.get(id)||0)+1)};
+  try{if(S.mode==='admin'){AD().members.forEach(mm=>{const ss=memSess(mm);Object.keys(ss).forEach(d=>ss[d].forEach(it=>(it.slots||[]).forEach(x=>{if(x)add(x.id,d)})))})}else selfItems().forEach(x=>add(x.id,x.date))}catch(e){}
+  return m;
+}
+const freqSort=(fm,fb)=>(a,b)=>(fm.get(b.id)||0)-(fm.get(a.id)||0)||fb(a,b);
 function mqHTML(){
-  const q=MQ.trim();if(!q)return '';
-  const sn=x=>String(x||'').toLowerCase().replace(/[^0-9a-z가-힣]/g,''),toks=q.split(/\s+/).map(sn).filter(Boolean);if(!toks.length)return '';
+  const q=MQ.trim();
+  const sn=x=>String(x||'').toLowerCase().replace(/[^0-9a-z가-힣]/g,''),toks=q.split(/\s+/).map(sn).filter(Boolean),isRec=!toks.length;
   const have=new Set(luObj().lu[ML.ph].map(t=>t.id));
-  const all=CAT.list().filter(e=>{const h=sn(e.name+' '+e.al+' '+eqTag(e));return toks.every(t=>h.includes(t))}).sort((a,b)=>eqRank(a)-eqRank(b)||a.sort-b.sort);
-  if(!all.length)return '<div class="mu" style="margin:6px 0">검색 결과가 없어요</div>';
-  return '<div style="margin:6px 0;border:1px solid var(--ln);border-radius:10px;overflow:hidden">'+all.slice(0,8).map(e=>`<div class="row" style="padding:6px 10px;border-bottom:1px solid var(--ln);gap:8px"><span style="min-width:0"><b style="color:${PC[e.part]}">${P[e.part]}</b> ${esc(e.name)}${eqTag(e)?` <span class="mu">· ${eqTag(e)}</span>`:''}</span>${have.has(e.id)?'<span class="mu" style="white-space:nowrap">추가됨</span>':`<button class="btn sm" style="white-space:nowrap" data-act="mqadd" data-id="${e.id}">추가</button>`}</div>`).join('')+(all.length>8?`<div class="mu" style="padding:6px 10px">외 ${all.length-8}개 · 더 입력해 좁혀 보세요</div>`:'')+'</div>'}
+  const all=isRec?recentEx(10).map(id=>EX[id]):CAT.list().filter(e=>{const h=sn(e.name+' '+e.al+' '+eqTag(e));return toks.every(t=>h.includes(t))}).sort(freqSort(freqEx(),(a,b)=>eqRank(a)-eqRank(b)||a.sort-b.sort));
+  if(!all.length)return isRec?'':'<div class="mu" style="margin:6px 0">검색 결과가 없어요</div>';
+  return (isRec?'<div class="mu" style="margin:6px 0 0"><b>최근 운동 10</b> · 눌러서 바로 올리기</div>':'')+'<div style="margin:6px 0;border:1px solid var(--ln);border-radius:10px;overflow:hidden">'+all.slice(0,isRec?10:8).map(e=>`<div class="row" style="padding:6px 10px;border-bottom:1px solid var(--ln);gap:8px"><span style="min-width:0"><b style="color:${PC[e.part]}">${P[e.part]}</b> ${esc(e.name)}${eqTag(e)?` <span class="mu">· ${eqTag(e)}</span>`:''}</span>${have.has(e.id)?'<span class="mu" style="white-space:nowrap">추가됨</span>':`<button class="btn sm" style="white-space:nowrap" data-act="mqadd" data-id="${e.id}">추가</button>`}</div>`).join('')+(all.length>8?`<div class="mu" style="padding:6px 10px">외 ${all.length-8}개 · 더 입력해 좁혀 보세요</div>`:'')+'</div>'}
 function mapRe(){const sh=document.querySelector('#md .sheet');if(!sh)return;const f=document.activeElement&&document.activeElement.id==='mq';sh.innerHTML=mapHTML();if(f){const i=$('#mq');if(i){i.focus();try{i.setSelectionRange(i.value.length,i.value.length)}catch(_){}}}}
 let FQ='',RMC=-1;
 function moveRoute(from,to){const sl=draft().slots,ix=[];sl.forEach((x,i)=>{if(x&&EX[x.id])ix.push(i)});if(from===to||from<0||to<0||from>=ix.length||to>=ix.length)return;const v=ix.map(i=>sl[i]),m=v.splice(from,1)[0];v.splice(to,0,m);ix.forEach((i,k)=>{sl[i]=v[k]})}
@@ -1517,13 +1534,13 @@ document.addEventListener('pointermove',e=>{if(!RD)return;const dy=e.clientY-RD.
 const rdEnd=()=>{if(!RD)return;const d=RD;RD=null;d.row.style.transform='';d.row.classList.remove('drg');d.rows.forEach(r=>r.classList.remove('tgt'));swSup=Date.now();if(d.to!==d.from){moveRoute(d.from,d.to);persist();render()}};
 document.addEventListener('pointerup',rdEnd);document.addEventListener('pointercancel',rdEnd);
 function fqHTML(d){
-  const q=FQ.trim();if(!q)return '';
-  const sn=x=>String(x||'').toLowerCase().replace(/[^0-9a-z가-힣]/g,''),toks=q.split(/\s+/).map(sn).filter(Boolean);if(!toks.length)return '';
+  const q=FQ.trim();
+  const sn=x=>String(x||'').toLowerCase().replace(/[^0-9a-z가-힣]/g,''),toks=q.split(/\s+/).map(sn).filter(Boolean),isRec=!toks.length;
   const world=FM==='world',o=luObj();
   const have=new Set(world?o.lu[o.phase].map(t=>t.id):d.slots.filter(Boolean).map(x=>x.id));
-  const all=CAT.list().filter(e=>{const h=sn(e.name+' '+e.al+' '+eqTag(e));return toks.every(t=>h.includes(t))}).sort((a,b)=>eqRank(a)-eqRank(b)||a.sort-b.sort);
-  if(!all.length)return '<div class="mu" style="margin:6px 0">검색 결과가 없어요</div>';
-  return '<div style="margin:6px 0;border:1px solid var(--ln);border-radius:10px;overflow:hidden">'+all.slice(0,8).map(e=>`<div class="row" style="padding:6px 10px;border-bottom:1px solid var(--ln);gap:8px"><span style="min-width:0"><b style="color:${PC[e.part]}">${P[e.part]}</b> ${esc(e.name)}${eqTag(e)?` <span class="mu">· ${eqTag(e)}</span>`:''}</span>${have.has(e.id)?'<span class="mu" style="white-space:nowrap">'+(world?'추가됨':'담김')+'</span>':`<button class="btn sm" style="white-space:nowrap" data-act="fqadd" data-id="${e.id}">${world?'올리기':'담기'}</button>`}</div>`).join('')+(all.length>8?`<div class="mu" style="padding:6px 10px">외 ${all.length-8}개 · 더 입력해 좁혀 보세요</div>`:'')+'</div>'}
+  const all=isRec?recentEx(10).map(id=>EX[id]):CAT.list().filter(e=>{const h=sn(e.name+' '+e.al+' '+eqTag(e));return toks.every(t=>h.includes(t))}).sort(freqSort(freqEx(),(a,b)=>eqRank(a)-eqRank(b)||a.sort-b.sort));
+  if(!all.length)return isRec?'':'<div class="mu" style="margin:6px 0">검색 결과가 없어요</div>';
+  return (isRec?'<div class="mu" style="margin:6px 0 0"><b>최근 운동 10</b> · 눌러서 바로 담기</div>':'')+'<div style="margin:6px 0;border:1px solid var(--ln);border-radius:10px;overflow:hidden">'+all.slice(0,isRec?10:8).map(e=>`<div class="row" style="padding:6px 10px;border-bottom:1px solid var(--ln);gap:8px"><span style="min-width:0"><b style="color:${PC[e.part]}">${P[e.part]}</b> ${esc(e.name)}${eqTag(e)?` <span class="mu">· ${eqTag(e)}</span>`:''}</span>${have.has(e.id)?'<span class="mu" style="white-space:nowrap">'+(world?'추가됨':'담김')+'</span>':`<button class="btn sm" style="white-space:nowrap" data-act="fqadd" data-id="${e.id}">${world?'올리기':'담기'}</button>`}</div>`).join('')+(all.length>8?`<div class="mu" style="padding:6px 10px">외 ${all.length-8}개 · 더 입력해 좁혀 보세요</div>`:'')+'</div>'}
 function fAddRoute(id){const sl=draft().slots;if(!draft().st)draft().st=Date.now();if(sl.some(x=>x&&x.id===id))return false;if(sl.filter(Boolean).length>=fMax()){toast('오늘 운동은 최대 '+fMax()+'개까지만 담을 수 있어요');return false}
   let i=sl.findIndex(x=>!x);if(i<0)i=sl.length;sl[i]={id,nm:EX[id].name,sets:mkSets(id)};return true}
 let FD=null;
@@ -1597,6 +1614,56 @@ function applyTheme(t){const h=document.documentElement;if(t==='light'||t==='dar
 function themeSeg(){const m=themeMode();const b=(v,l)=>`<button class="chip ${m===v?'on':''}" data-act="theme" data-v="${v}" aria-pressed="${m===v?'true':'false'}">${l}</button>`;
   return `<div class="row" style="gap:6px;flex-wrap:wrap">${b('light','☀ 화이트')}${b('dark','☾ 다크')}${b('auto','기기 설정 따름')}</div>`}
 function themeCard(){return `<div class="pn"><div class="h2">화면 테마</div><div class="mu" style="margin:4px 0 8px">이 기기에서만 적용돼요.</div>${themeSeg()}</div>`}
+/* ---- 푸시 알림(앱을 닫아도 폰에 오는 "운동이 종료되었나요?"): 서버(Edge Function idle-push)가 보내요. 공개 키는 vapid-keys.html 에서 만든 ①번 값 ---- */
+const VAPID_PUB='BLqm11nYhrlmVN0FMq53u3ZzLVINOhNrM-vGr5YmcKapCFtXovIIBeCciYvt0rdraM_d0HUPMsl4ctOBdIqGPGI';
+const PS={on:null,busy:false,msg:''};
+const pushOK=()=>('serviceWorker' in navigator)&&('PushManager' in window)&&('Notification' in window);
+const u8=b=>{const s=(b+'='.repeat((4-b.length%4)%4)).replace(/-/g,'+').replace(/_/g,'/'),r=atob(s);return Uint8Array.from(r,c=>c.charCodeAt(0))};
+async function pushCheck(){
+  if(!pushOK()){PS.on=false;return}
+  try{const reg=await navigator.serviceWorker.ready,sub=await reg.pushManager.getSubscription();PS.on=!!sub&&Notification.permission==='granted'}catch(e){PS.on=false}
+  if(tab==='me')render();
+}
+async function pushOn(){
+  if(PS.busy)return;PS.msg='';
+  if(!VAPID_PUB){PS.msg='서버 푸시 키가 아직 설정되지 않았어요 (관리자 설정 필요)';render();return}
+  if(!sb||!UID){PS.msg='서버에 로그인해야 켤 수 있어요';render();return}
+  PS.busy=true;render();
+  try{
+    const perm=await Notification.requestPermission();
+    if(perm!=='granted'){PS.msg='알림 권한이 허용되지 않았어요. 기기 설정에서 룬PT 알림을 허용해 주세요';PS.busy=false;render();return}
+    const reg=await navigator.serviceWorker.ready;let sub=await reg.pushManager.getSubscription();
+    if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:u8(VAPID_PUB)});
+    const j=sub.toJSON(),row={endpoint:j.endpoint,p256dh:j.keys.p256dh,auth:j.keys.auth,ua:(navigator.userAgent||'').slice(0,120)};
+    let r=await sb.from('push_subscriptions').insert(Object.assign({user_id:UID},row));
+    if(r.error&&(r.error.code==='23505'||/duplicate/i.test(r.error.message||'')))r=await sb.from('push_subscriptions').update({p256dh:row.p256dh,auth:row.auth,ua:row.ua}).eq('endpoint',row.endpoint);
+    if(r.error){PS.msg=/relation|does not exist|schema cache/i.test(r.error.message||'')?'서버에 8단계 SQL(phase8)을 먼저 실행해 주세요':(r.error.message||'등록하지 못했어요');await sub.unsubscribe().catch(()=>{})}
+    else{PS.on=true;toast('푸시 알림을 켰어요')}
+  }catch(e){PS.msg='알림을 켜지 못했어요 ('+((e&&e.message)||'오류')+')'}
+  PS.busy=false;render();
+}
+async function pushOff(){
+  PS.busy=true;render();
+  try{const reg=await navigator.serviceWorker.ready,sub=await reg.pushManager.getSubscription();if(sub){const ep=sub.endpoint;await sub.unsubscribe();if(sb&&UID)await sb.from('push_subscriptions').delete().eq('endpoint',ep)}PS.on=false;toast('푸시 알림을 껐어요')}catch(e){PS.msg='끄지 못했어요'}
+  PS.busy=false;render();
+}
+const pushEnd=()=>{if(PS.on&&sb&&UID)sb.rpc('push_mark_end',{p_ms:Date.now()}).then(()=>{},()=>{})};
+function pushCard(){
+  if(PS.on===null){PS.on=false;setTimeout(pushCheck,0)}
+  const ios=/iPad|iPhone|iPod/.test(navigator.userAgent)&&!navigator.standalone;
+  const body=!pushOK()?`<div class="mu">${ios?'아이폰은 사파리에서 [공유] → [홈 화면에 추가]로 설치한 뒤, 설치된 룬PT 앱에서 켤 수 있어요.':'이 브라우저는 푸시 알림을 지원하지 않아요.'}</div>`
+    :`<div class="mu" style="margin:4px 0 8px">운동 중 10분 넘게 세트 기록이 없으면 앱을 닫아도 폰으로 "운동이 종료되었나요?" 알림을 보내요. 저장하고 운동을 마치면 알림은 오지 않아요.${ios?' (아이폰은 홈 화면에 설치한 앱에서만 켤 수 있어요)':''}</div>
+    <button class="btn${PS.on?' ghost':''}" data-act="${PS.on?'pushoff':'pushon'}"${PS.busy?' disabled':''}>${PS.busy?'처리 중…':PS.on?'푸시 알림 끄기':'푸시 알림 켜기'}</button>${PS.on?'<div class="mu" style="margin-top:6px">✅ 이 기기에서 알림을 받는 중이에요</div>':''}`;
+  return `<div class="pn"><div class="h2">푸시 알림</div>${body}${PS.msg?`<div class="mu" style="color:#c0392b;margin-top:6px">${esc(PS.msg)}</div>`:''}</div>`;
+}
+/* 내 기록을 트레이너가 열람한 기록(회원 본인 화면) */
+const MV={rows:null,err:'',busy:false};
+async function mvLoad(){if(MV.busy||!sb||!UID)return;MV.busy=true;try{const r=await sb.rpc('my_record_views',{p_limit:10});MV.rows=r.error?[]:(r.data||[]);MV.err=r.error?'열람 기록은 서버 7단계 SQL을 실행하면 볼 수 있어요':''}catch(e){MV.rows=[]}MV.busy=false;if(tab==='me')render()}
+function viewCard(){
+  if(!sb||!UID)return '';if(MV.rows===null&&!MV.busy)setTimeout(mvLoad,0);
+  const l=MV.rows||[];
+  return `<div class="pn"><div class="h2">내 기록 열람 기록</div><div class="mu" style="margin:4px 0 6px">내 운동 기록과 신체 정보는 트레이너가 열람할 수 있어요. 열람하면 아래에 남아요.</div>${MV.err?`<div class="mu">${esc(MV.err)}</div>`:l.length?l.map(x=>`<div class="mu">${esc(x.viewer_nickname||'트레이너')} · ${new Date(x.viewed_at).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Seoul'})}</div>`).join(''):`<div class="mu">${MV.rows===null?'불러오는 중…':'아직 열람 기록이 없어요'}</div>`}</div>`;
+}
 function viewMe(){
   const u=S.user;
   return `<h1 class="h1">계정 정보</h1><div class="pn">${u?`<div class="row"><div><b class="h2">${u.name}</b><div class="mu">${u.provider} 계정 연결됨 · 서버 저장: ${syncTxt()}</div></div><button class="btn ghost" style="width:auto;padding:8px 14px" data-act="logout">로그아웃</button></div>${linkHTML()}`:
@@ -1604,6 +1671,8 @@ function viewMe(){
   <button class="btn" style="background:#fee500;color:#191600;margin-bottom:8px" data-act="login" data-p="카카오">카카오로 시작하기</button>
   <button class="btn ghost" data-act="login" data-p="구글">구글로 시작하기</button>`}</div>
   ${mileCard()}
+  ${pushCard()}
+  ${viewCard()}
   ${themeCard()}
   ${syCard()}
   ${eqCard()}
@@ -2380,10 +2449,10 @@ function render(){
   if(SCR!=='app'){renderGate();return}
   document.querySelector('.nav').style.display='';
   const ad=S.mode==='admin';
-  $('#app').innerHTML=srvBar()+(ad?(ADM.cur&&!ADM.pop?viewAdmEdit():tab==='mem'?viewMem():tab==='cat'?viewCat():tab==='acal'?viewACal():tab==='quest'?viewQuest2():viewDay2()):VIEWS[tab]());
+  $('#app').innerHTML=srvBar()+(ad?(ADM.cur&&!ADM.pop?viewAdmEdit():tab==='mem'?viewMem():tab==='cat'?viewCat():tab==='rec'?viewRec():tab==='acal'?viewACal():tab==='quest'?viewQuest2():viewDay2()):VIEWS[tab]());
   $('#app').className=ad&&ADM.cur&&!ADM.pop&&!ADM.live?'wide':'';
   if(ad&&ADM.pop&&ADM.cur){const m=$('#md');if(!m.classList.contains('on')||m.querySelector('[data-edit]'))openM(viewAdmEdit())}
-  $('#nav').innerHTML=(ad?[['acal','달력'],['day','일일 스케줄'],['quest','과제·특이사항'],['mem','회원'],['cat','종목']]:[['home','홈'],['today','운동시작'],['cal','캘린더조회'],['stat','통계분석'],['me','계정 정보']]).map(([k,t])=>`<button class="${tab===k?'on':''}" data-act="tab" data-v="${k}">${t}</button>`).join('');
+  $('#nav').innerHTML=(ad?[['acal','달력'],['day','일일 스케줄'],['quest','과제·특이사항'],['mem','회원'],['rec','전적'],['cat','종목']]:[['home','홈'],['today','운동시작'],['cal','캘린더조회'],['stat','통계분석'],['me','계정 정보']]).map(([k,t])=>`<button class="${tab===k?'on':''}" data-act="tab" data-v="${k}">${t}</button>`).join('');
 }
 const toast=t=>{const e=document.createElement('div');e.className='toast';e.textContent=t;document.body.appendChild(e);setTimeout(()=>e.remove(),1800)};
 const openM=h=>{$('#md').innerHTML=`<div class="sheet">${h}</div>`;$('#md').classList.add('on')};
@@ -2395,13 +2464,14 @@ const PK_EQ=[['','전체'],['barbell','바벨'],['dumbbell','덤벨'],['cable','
 function pickList(){
   const q=PK.q.trim(),sn=s=>String(s||'').toLowerCase().replace(/[^0-9a-z가-힣]/g,''),toks=q?q.split(/\s+/).map(sn).filter(Boolean):[];
   const eqOk=e=>!PK.eq||(PK.eq==='machine'?['machine','plate','pin'].indexOf(e.eq)>=0:e.eq===PK.eq);
-  const list=CAT.list().filter(e=>{if(!eqOk(e)||(PK.m&&!e.m))return false;if(toks.length){const h=sn(e.name+' '+e.al+' '+eqTag(e));return toks.every(t=>h.includes(t))}return e.part===PK.part}).sort((a,b)=>eqRank(a)-eqRank(b)||a.sort-b.sort);
-  $('#pl').innerHTML=list.map(e=>`<button class="ex" data-act="pick" data-id="${e.id}"><span>${esc(e.name)}</span><span class="mu">${P[e.part]}${eqTag(e)?' · '+eqTag(e):''}</span></button>`).join('')||'<div class="mu">검색 결과가 없어요</div>';
+  const rec=!toks.length&&PK.part==='recent'?recentEx(10):null;
+  const fm=freqEx(),list=rec?rec.map(id=>EX[id]).filter(e=>e&&eqOk(e)&&!(PK.m&&!e.m)):CAT.list().filter(e=>{if(!eqOk(e)||(PK.m&&!e.m))return false;if(toks.length){const h=sn(e.name+' '+e.al+' '+eqTag(e));return toks.every(t=>h.includes(t))}return e.part===PK.part}).sort(freqSort(fm,(a,b)=>eqRank(a)-eqRank(b)||a.sort-b.sort));
+  $('#pl').innerHTML=list.map(e=>`<button class="ex" data-act="pick" data-id="${e.id}"><span>${esc(e.name)}${fm.get(e.id)>=3?' <small style="color:#c98a14">★자주</small>':''}</span><span class="mu">${P[e.part]}${eqTag(e)?' · '+eqTag(e):''}</span></button>`).join('')||`<div class="mu">${rec?'최근 기록한 운동이 아직 없어요':'검색 결과가 없어요'}</div>`;
 }
 function openPick(i,lu){
-  PK.slot=i;PK.q='';PK.lu=!!lu;
+  PK.slot=i;PK.q='';PK.lu=!!lu;PK.part=recentEx(1).length?'recent':(PK.part==='recent'?'chest':PK.part);
   openM(`<div class="row"><b class="h2">종목 장착</b><button class="x" data-act="close">✕</button></div>
-  <input type="text" id="pq" placeholder="종목 검색 (예: 풀오버, 덤벨 프레스)"><div class="tabs" id="ptabs">${Object.keys(P).map(k=>`<button data-act="ptab" data-v="${k}" class="${PK.part===k?'on':''}">${P[k]}</button>`).join('')}</div><div class="tabs" id="eqt" style="margin-top:4px">${PK_EQ.map(([k,n])=>`<button data-act="peq" data-v="${k}" class="${(PK.eq||'')===k?'on':''}">${n}</button>`).join('')}</div><label class="mu" style="display:flex;gap:6px;align-items:center;margin-bottom:4px"><input type="checkbox" id="pm" ${PK.m?'checked':''}> 머신·케이블만 보기</label><div id="pl"></div>`);
+  <input type="text" id="pq" placeholder="종목 검색 (예: 풀오버, 덤벨 프레스)"><div class="tabs" id="ptabs"><button data-act="ptab" data-v="recent" class="${PK.part==='recent'?'on':''}">최근</button>${Object.keys(P).map(k=>`<button data-act="ptab" data-v="${k}" class="${PK.part===k?'on':''}">${P[k]}</button>`).join('')}</div><div class="tabs" id="eqt" style="margin-top:4px">${PK_EQ.map(([k,n])=>`<button data-act="peq" data-v="${k}" class="${(PK.eq||'')===k?'on':''}">${n}</button>`).join('')}</div><label class="mu" style="display:flex;gap:6px;align-items:center;margin-bottom:4px"><input type="checkbox" id="pm" ${PK.m?'checked':''}> 머신·케이블만 보기</label><div id="pl"></div>`);
   pickList();
 }
 /* ---- 세트 입력 옆 실시간 구간 안내: 이 무게에서 몇 회면 노말 / 하드 / 슬레이어인지 (내 현재 티어 기준, 참고용) ---- */
@@ -2471,6 +2541,77 @@ function recHTML(){
 const CU={part:'chest'};
 const HEADS=[['squat','스쿼트'],['bench','벤치프레스'],['deadlift','데드리프트'],['ohp','오버헤드 프레스'],['bbrow','바벨 로우']];
 const catRow=id=>CAT.rows.find(r=>r.id===id);
+/* ---- 전적조회(트레이너): 서버 전체 회원의 기록을 이름으로 찾고, 기록을 열어 신체 정보·운동 순서(기보)를 봐요. 열람하면 회원 쪽에 열람 기록이 남아요 ---- */
+const REC={q:'',tab:'feed',members:null,feed:null,more:false,err:'',busy:false,cur:null,ov:null,ss:null,sel:null,derr:''};
+const recErr=e=>/function|does not exist|schema cache/i.test((e&&e.message)||'')?'서버에 7단계 SQL(phase7)을 먼저 실행해 주세요':/트레이너만/.test((e&&e.message)||'')?'트레이너 계정으로 로그인해야 볼 수 있어요':((e&&e.message)||'불러오지 못했어요');
+async function recLoad(more){
+  if(REC.busy)return;
+  if(!sb||!UID){REC.err='서버에 로그인해야 전적을 조회할 수 있어요';REC.feed=REC.members=[];render();return}
+  REC.busy=true;const q=REC.q.trim()||null;
+  try{
+    if(REC.tab==='feed'){const off=more&&REC.feed?REC.feed.length:0,r=await sb.rpc('trainer_record_feed',{p_q:q,p_limit:30,p_offset:off});
+      if(r.error){REC.err=recErr(r.error);REC.feed=REC.feed||[]}else{REC.err='';const d=r.data||[];REC.feed=off?REC.feed.concat(d):d;REC.more=d.length>=30}}
+    else{const r=await sb.rpc('trainer_record_members',{p_q:q});if(r.error){REC.err=recErr(r.error);REC.members=REC.members||[]}else{REC.err='';REC.members=r.data||[]}}
+  }catch(e){REC.err='불러오지 못했어요'}
+  REC.busy=false;if(tab==='rec'&&!REC.cur)render();
+}
+async function recOpen(id,nm,date,no){
+  REC.cur={id,nm};REC.ov=null;REC.ss=null;REC.sel=date?date+'#'+(no||1):null;REC.derr='';render();
+  try{const [a,b]=await Promise.all([sb.rpc('trainer_member_overview',{p_member:id}),sb.rpc('trainer_member_sessions',{p_member:id,p_limit:60})]);
+    if(a.error||b.error){REC.derr=recErr(a.error||b.error)}else{REC.ov=a.data||{};REC.ss=b.data||[];if(!REC.sel&&REC.ss.length)REC.sel=REC.ss[0].session_date+'#'+REC.ss[0].session_no}
+  }catch(e){REC.derr='불러오지 못했어요'}
+  if(tab==='rec')render();
+}
+const hhmm=t=>{try{return new Date(t).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Seoul'})}catch(e){return ''}};
+const recExName=x=>{const e=x&&x.id&&EX[x.id];return e&&!e.missing?e.name:(x&&x.nm)||'(삭제된 종목)'};
+function recTimeline(items){
+  const sl=(items||[]).filter(x=>x&&x.sets);const seq=[];
+  sl.forEach((x,xi)=>{let mn=0;x.sets.forEach((s,si)=>{if(s.t==='M')mn++;if(s.done)seq.push({xi,si,at:s.at||0,nm:recExName(x),lab:s.t==='W'?'W':s.t==='F'?'F':'M'+mn,txt:isDB(x.id)?setTxt(s):(s.v?wTxt(s):s.w)+'×'+s.r})})});
+  const timed=seq.filter(q=>q.at).sort((a,b)=>a.at-b.at),use=timed.length>=seq.length&&seq.length?timed:seq;
+  return{sl,seq:use,timed:timed.length>=seq.length&&seq.length>0};
+}
+function recSessionHTML(g){
+  const tl=recTimeline(g.items),sl=tl.sl;
+  if(!sl.length)return '<div class="mu">저장된 종목이 없어요</div>';
+  const tv=sl.reduce((a,x)=>a+vol(x.sets,x.id),0),ns=sl.reduce((a,x)=>a+x.sets.filter(s=>s.done&&s.t!=='W').length,0);
+  const ats=tl.seq.map(q=>q.at).filter(Boolean),dur=ats.length>1?Math.round((Math.max(...ats)-Math.min(...ats))/60000):0;
+  const route=sl.map((x,i)=>{const mx=x.sets.filter(s=>s.done&&s.t!=='W').length;return `<div class="sp"><b>${i+1}. ${esc(recExName(x))}</b> <span class="mu">${fmt(vol(x.sets,x.id))}kg · ${mx}세트</span><div class="mu">${x.sets.map(s=>(s.t==='W'?'W ':s.t==='F'?'F ':'')+(isDB(x.id)?setTxt(s):(s.v?wTxt(s):s.w)+'×'+s.r)+(s.done?'':'(미완)')).join(' · ')}</div>${x.note?`<div class="mu">📝 ${esc(x.note)}</div>`:''}</div>`}).join('');
+  let prev=0;const seq=tl.seq.map((q,i)=>{const gap=tl.timed&&prev&&q.at?Math.round((q.at-prev)/60000):null;if(q.at)prev=q.at;return `<div class="rtl"><span class="rtn">${i+1}</span><span class="rtt">${q.at?hhmm(q.at):'–'}</span><span class="rtx"><b>${esc(q.nm)}</b> ${q.lab} ${q.txt}</span>${gap!=null&&gap>0?`<span class="mu rtg">+${gap}분</span>`:''}</div>`}).join('');
+  return `<div class="mu" style="margin:4px 0">볼륨 ${fmt(tv)}kg · 완료 ${ns}세트${dur?' · 약 '+dur+'분':''}</div>${g.grade||g.review?`<div class="mu">${g.grade?'등급 '+esc(g.grade)+' ':''}${g.review?'📝 '+esc(g.review):''}</div>`:''}
+  <div class="mu" style="margin:8px 0 4px"><b>운동 순서(산책로)</b></div>${route}
+  <div class="mu" style="margin:10px 0 4px"><b>세트 기보</b>${tl.timed?' (완료 시각순)':' (기록 순서 · 시각 정보 없음)'}</div><div class="rtls">${seq||'<div class="mu">완료한 세트가 없어요</div>'}</div>`;
+}
+function recDetail(){
+  const c=REC.cur,R=window.RuneTier;
+  let h=`<div class="pn"><div class="row"><button class="btn ghost sm" style="width:auto" data-act="recback">← 목록</button><b class="h2">${esc(c.nm||'회원')}</b></div>`;
+  if(REC.derr)return h+`<div class="mu" style="color:#c0392b;margin-top:8px">${esc(REC.derr)}</div></div>`;
+  if(!REC.ov)return h+'<div class="mu" style="margin-top:8px">불러오는 중…</div></div>';
+  const o=REC.ov,b=o.body||{},p=o.profile||{},st=o.stat||{};
+  const age=b.birth_year?new Date().getFullYear()-b.birth_year:null;
+  const chips=[b.sex==='M'?'남':b.sex==='F'?'여':'',age!=null?age+'세':'',b.height_cm?b.height_cm+'cm':'',b.body_kg?b.body_kg+'kg':'',b.experience||'',(b.interests&&b.interests.length)?'관심 '+b.interests.join('·'):'',(b.injuries&&b.injuries.length)?'부상/질병 '+b.injuries.join('·'):'',b.injury_note?'메모 '+b.injury_note:''].filter(Boolean);
+  h+=`<div class="mu" style="margin:6px 0">${p.joined_at?String(p.joined_at).slice(0,10)+' 가입 · ':''}기록 ${st.sessions||0}회${st.first?' · '+st.first+' ~ '+st.last:''}</div>
+  <div class="mu">${chips.length?chips.map(esc).join(' · '):'신체 정보가 아직 없어요'}</div>`;
+  const tr=o.tiers&&typeof o.tiers==='object'?Object.keys(o.tiers).map(k=>({k,t:(o.tiers[k]||{}).tier||0,n:R.BY_ID[k]?R.BY_ID[k].name:k.replace(/^x:/,'')})).filter(x=>x.t>0).sort((a,b)=>b.t-a.t):[];
+  if(tr.length)h+=`<div class="mu" style="margin-top:8px"><b>종목별 티어</b></div><div class="mu">${tr.slice(0,12).map(x=>esc(x.n)+' '+R.TIERS[x.t]).join(' · ')}</div>`;
+  h+=`<div class="mu" style="margin:10px 0 4px"><b>운동 기록 (${(REC.ss||[]).length}${(REC.ss||[]).length>=60?'+':''}회)</b></div>`;
+  const ss=REC.ss||[];
+  h+=ss.map(g=>{const k=g.session_date+'#'+g.session_no,open=REC.sel===k,n=(g.items||[]).filter(x=>x&&x.sets).length;return `<button class="ex" data-act="recday" data-k="${k}"><span>${g.session_date}${g.session_no>1?' · '+g.session_no+'회차':''}${open?' ▾':''}</span><span class="mu">${n}종목</span></button>${open?`<div class="pn" style="margin:4px 0 8px">${recSessionHTML(g)}</div>`:''}`}).join('')||'<div class="mu">저장된 운동 기록이 없어요</div>';
+  return h+'</div>';
+}
+function viewRec(){
+  if(REC.cur)return recDetail();
+  if(REC.feed===null&&REC.members===null&&!REC.busy)setTimeout(()=>recLoad(false),0);
+  else if(REC.tab==='feed'&&REC.feed===null&&!REC.busy)setTimeout(()=>recLoad(false),0);
+  else if(REC.tab==='mem'&&REC.members===null&&!REC.busy)setTimeout(()=>recLoad(false),0);
+  const list=REC.tab==='feed'?REC.feed:REC.members;
+  const rows=!list?'<div class="mu">불러오는 중…</div>':!list.length?`<div class="mu">${REC.err?'':'결과가 없어요'}</div>`:REC.tab==='feed'
+    ?list.map(x=>{const nm=(x.ex||[]).map(recExName).slice(0,4).join(', '),n=(x.ex||[]).length;return `<button class="ex" data-act="recopen" data-uid="${x.member_id}" data-nm="${esc(x.nickname||'회원')}" data-d="${x.session_date}" data-no="${x.session_no}"><span><b>${esc(x.nickname||'회원')}</b> <small class="mu">${x.session_date}${x.session_no>1?' · '+x.session_no+'회차':''}</small><br><small class="mu">${esc(nm)}${n>4?' 외 '+(n-4):''}</small></span><span class="mu">${n}종목</span></button>`}).join('')+(REC.more?'<button class="btn ghost" data-act="recmore">더 보기</button>':'')
+    :list.map(x=>`<button class="ex" data-act="recopen" data-uid="${x.member_id}" data-nm="${esc(x.nickname||'회원')}"><span><b>${esc(x.nickname||'회원')}</b><br><small class="mu">${String(x.joined_at||'').slice(0,10)} 가입</small></span><span class="mu">${x.sessions}회${x.last_date?' · 최근 '+x.last_date:''}</span></button>`).join('');
+  return `<div class="pn"><b class="h2">전적조회</b><div class="mu" style="margin:4px 0 8px">서버에 가입한 전체 회원의 운동 기록을 열람해요. 기록을 열면 회원의 내 정보 화면에 열람 기록이 남아요.</div>
+  <input class="fi" id="recq" type="search" placeholder="회원 이름 검색" value="${esc(REC.q)}" style="width:100%;margin-bottom:8px">
+  <div class="tabs"><button data-act="rectab" data-v="feed" class="${REC.tab==='feed'?'on':''}">최근 운동</button><button data-act="rectab" data-v="mem" class="${REC.tab==='mem'?'on':''}">회원</button></div>
+  ${REC.err?`<div class="mu" style="color:#c0392b;margin:8px 0">${esc(REC.err)}</div>`:''}<div style="margin-top:8px">${rows}</div></div>`;
+}
 function viewCat(){
   const rows=CAT.rows.filter(r=>r.part===CU.part).sort((a,b)=>a.sort-b.sort),rj=CATSTATE.rejected||[];
   const tag=r=>{const t=r.tier||{},h=HEADS.find(x=>x[0]===t.head);return [r.is_machine?'머신':'',t.core?'티어 연결':'',h?'왕룬 '+h[1]:'',r.std?'기준표 v'+r.std.version:'',r.status==='hidden'?'숨김':r.status==='retired'?'폐기':''].filter(Boolean).join(' · ')};
@@ -2626,6 +2767,12 @@ const A={
   acopy:d=>copyText(kakaoText(fi(d.id),ADM.date)),
   asend:d=>{const it=fi(d.id);if(!it.name.trim()){toast('회원을 먼저 지정해 주세요');return}if(!sb||!UID){toast('서버에 로그인해야 보낼 수 있어요');return}sendGift(it).then(x=>{persist();render();toast(sendMsg(x,it))})},
   asendall:async()=>{if(!sb||!UID){toast('서버에 로그인해야 보낼 수 있어요');return}let ok=0,no=0,bad=0;for(const it of plan(ADM.date)){if(!it.name.trim()||it.sent)continue;const x=await sendGift(it);if(x==='ok')ok++;else if(x==='nolink')no++;else bad++}persist();render();toast(`${ok}건 보냈어요${no?' · 계정 미연결 '+no+'건':''}${bad?' · 실패 '+bad+'건':''}`)},
+  pushon:()=>pushOn(),pushoff:()=>pushOff(),
+  rectab:d=>{REC.tab=d.v;if((d.v==='feed'?REC.feed:REC.members)===null)REC.err='';recLoad(false);render()},
+  recopen:d=>recOpen(d.uid,d.nm,d.d,d.no),
+  recback:()=>{REC.cur=null;REC.ov=null;REC.ss=null;render()},
+  recday:d=>{REC.sel=REC.sel===d.k?null:d.k;render()},
+  recmore:()=>recLoad(true),
   apicker:async d=>{MP.target=d.id||'';MP.q='';MP.list=null;MP.err='';openM(pickerHTML());await loadMP()},
   apick2:d=>{if(MP.target){const m=AD().members.find(x=>x.id===MP.target);if(m){m.uid=d.uid;m.acct=d.nm}}else{const ex=AD().members.find(x=>x.uid===d.uid);if(ex){toast('이미 연결된 회원이에요');return}AD().members.push({id:'m'+Date.now(),name:d.nm,uid:d.uid,acct:d.nm})}persist();closeM();render();toast('가입 계정을 연결했어요')},
   aunlink:d=>{const m=AD().members.find(x=>x.id===d.id);if(m){m.uid=null;m.acct=''}persist();openM(memInfo(d.id));toast('연결을 해제했어요')},
@@ -2707,7 +2854,7 @@ const A={
   rest0:()=>{RT=0;const b=$('#rest');if(b)b.textContent=rtTxt()},
   save:()=>{const sl=draft().slots.filter(Boolean);if(!sl.length){toast('먼저 룬에 종목을 장착해 주세요');return}
     const bf={};try{tierRows().forEach(q=>bf[q.m.id]=q.p.tier)}catch(e){}
-    draft().endAt=Date.now();putToday(sl);persist();
+    draft().endAt=Date.now();pushEnd();putToday(sl);persist();
     let up=[];try{up=tierRows().filter(q=>q.p.tier>(bf[q.m.id]||0)).map(q=>Object.assign(q,{from:bf[q.m.id]||0}))}catch(e){}
     if(!up.length)toast(curNo()>1?`오늘 ${curNo()}번째 운동 기록을 저장했어요`:'오늘 기록을 저장했어요');
     openM(up.length?promoHTML(up):reportHTML(sl))},
@@ -2748,6 +2895,7 @@ setInterval(()=>{if(RT>0){RT--;const b=$('#rest');if(b)b.textContent=rtTxt()}},1
 document.addEventListener('input',e=>{
   const t=e.target;
   if(t.dataset.pf){OB[t.dataset.pf]=t.value;obRefresh();return}
+  if(t.id==='recq'){REC.q=t.value;clearTimeout(REC.tm);REC.tm=setTimeout(async()=>{REC.feed=null;REC.members=null;await recLoad(false);const e=$('#recq');if(e){e.focus();try{e.setSelectionRange(e.value.length,e.value.length)}catch(x){}}},350);return}
   if(t.id==='mpq'){MP.q=t.value;const l=$('#mpl');if(l)l.innerHTML=mpList();return}
   if(t.id==='fq'){FQ=t.value;const l=$('#fqr');if(l)l.innerHTML=fqHTML(draft());return}
   if(t.id==='mq'){MQ=t.value;const l=$('#mqr');if(l)l.innerHTML=mqHTML();return}
