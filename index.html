@@ -54,6 +54,16 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--cy);outline-off
 .fseg{display:flex;gap:4px;flex-wrap:wrap;margin:6px 0}
 .fseg button{border:1px solid var(--ln);background:var(--pn);color:var(--mu);border-radius:999px;padding:4px 12px;font:inherit;font-size:12.5px;cursor:pointer}
 .fseg button.on{background:var(--cy);border-color:var(--cy);color:#fff;font-weight:700}
+.ms{font-weight:800;margin-left:4px;white-space:nowrap}.ms.s{color:#8d99a8}.ms.y{color:#d9a400}.ms.r{color:#e5484d}
+.rpx{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:10px;margin-top:8px;scrollbar-width:none}.rpx::-webkit-scrollbar{display:none}
+.rpc{flex:0 0 100%;scroll-snap-align:center;box-sizing:border-box;min-height:330px;border-radius:18px;padding:22px 18px;background:#0b1424;color:#eef2f8;display:flex;flex-direction:column;gap:10px;justify-content:center;min-width:0}
+.rpt{font-size:22px;font-weight:900;text-align:center}.rps{font-size:13px;text-align:center;opacity:.85;line-height:1.5}
+.rpw{display:flex;justify-content:center;gap:8px;margin:6px 0}.rpw span{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px}
+.rpw i{width:30px;height:30px;border-radius:50%;background:#24324a;display:grid;place-items:center;font-style:normal;color:#fff;font-weight:900}.rpw i.on{background:#1e90ff}
+.rpg{display:grid;grid-template-columns:1fr 1fr;gap:14px 10px;margin:4px 0}.rpg div{display:flex;flex-direction:column}.rpg b{font-size:24px}.rpg span{font-size:12px;opacity:.8}
+.rpl{font-size:14px;line-height:1.8}.rpl b{color:#4aa8ff;margin-right:6px}
+.rpr{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #22304a;font-size:14px}.rpr>span:first-child{min-width:0}.rpr small{display:block;font-size:11px;opacity:.7;margin-top:2px}.rpr>b{font-size:16px;white-space:nowrap}
+.rpd{display:flex;justify-content:center;gap:6px;margin-top:8px}.rpd i{width:7px;height:7px;border-radius:50%;background:var(--ln)}.rpd i.on{background:var(--cy)}
 .frl{display:flex;flex-direction:column;gap:2px;margin:4px 0}
 .frow{display:flex;align-items:stretch;gap:4px;position:relative}
 .frow.drg{z-index:5;box-shadow:0 6px 18px rgba(0,0,0,.35);opacity:.92;background:var(--pn)}
@@ -1051,6 +1061,42 @@ function gradeHTML(sl){
   }).join('');
   return `<div class="row"><b class="h2">오늘 세트 평가</b><button class="x" data-act="close">✕</button></div><div class="mu" style="margin:4px 0 8px">웜업을 뺀 완료 세트를 승급 시험 기준으로 환산했어요. 아 아이언 · 브 브론즈 · 실 실버 · 골 골드 · 플 플래티넘 · 에 에메랄드 · 다 다이아 · 마 마스터 · 그 그랜드마스터 · 챌 챌린저. 세트 구성이 비슷할수록 일관된 운동이에요.</div>${body}`;
 }
+/* ---- 숙련도 마일리지: 7대 지표별 누적 볼륨 → 은색별 1k · 노란별 10k · 빨간별 100k (달리기는 km) ---- */
+const MAX=[['back','등'],['chest','가슴'],['leg','다리'],['core','코어'],['shoulder','어깨'],['arm','팔'],['cardio','심폐']];
+function mileOf(list,runs){const o={};MAX.forEach(a=>o[a[0]]=0);(list||[]).forEach(x=>{const e=x&&EX[x.id];if(!e||!(e.part in o))return;o[e.part]+=vol(x.sets||[])});(runs||[]).forEach(q=>o.cardio+=(+q.km||0));return o}
+function mileAll(){const l=[];allDates().forEach(d=>dayItems(d).forEach(x=>l.push(x)));return mileOf(l,S.runs)}
+const mStars=(v,u)=>{const k=Math.floor(v/u);return{r:Math.floor(k/100),y:Math.floor(k%100/10),s:k%10,k}};
+const mStarHTML=st=>(st.r?`<span class="ms r">★${st.r}</span>`:'')+(st.y?`<span class="ms y">★${st.y}</span>`:'')+(st.s?`<span class="ms s">★${st.s}</span>`:'')||'<span class="mu">-</span>';
+function mileCard(){const m=mileAll();
+  return `<div class="pn"><div class="row"><b class="h2">숙련도 마일리지</b><span class="mu"><span class="ms s">★</span>1천 <span class="ms y">★</span>1만 <span class="ms r">★</span>10만 kg</span></div><div class="mu" style="margin:4px 0 6px">7대 지표별 누적 볼륨이에요. 운동을 저장할 때마다 쌓이고, 지난 기록도 모두 포함돼요. 심폐는 달리기 1km · 10km · 100km 기준이에요.</div>${MAX.map(([k,n])=>{const c=k==='cardio',st=mStars(m[k],c?1:1000);return `<div class="row" style="padding:5px 0;border-bottom:1px solid var(--ln)"><b>${n}</b><span>${mStarHTML(st)} <span class="mu" style="margin-left:6px">${c?(Math.round(m[k]*10)/10)+' km':fmt(m[k])+' kg'}</span></span></div>`}).join('')}</div>`}
+/* ---- 운동 종료 성적표: 넘겨 보는 카드 ---- */
+const TIERC=['#8b9099','#cf8a52','#9aa7b8','#e0a82e','#2bbfae','#2fbf73','#4f97f0','#b060f0','#f0506a','#e0b83a'];
+function rpCount(){let n=0;allDates().forEach(d=>{n+=[S.sessions[d]||[]].concat(S.more[d]||[]).filter(g=>g&&g.length).length});return n}
+function bestOf(x){const g=gradeCalc(x);if(!g.ok)return{ok:false,why:g.why};if(!g.rows.length)return{ok:false,why:'완료한 본 세트가 없어요'};const b=g.rows.slice().sort((a,c)=>c.e1-a.e1)[0];return{ok:true,t:b.t,w:b.w,r:b.r,e1:b.e1}}
+function reportHTML(sl){
+  const R=window.RuneTier,n=rpCount(),ats=[];sl.forEach(x=>x.sets.forEach(s=>{if(s.done&&s.at)ats.push(s.at)}));
+  const st0=(draft().st&&ats.length)?Math.min(draft().st,...ats):Math.min(...ats),dur=ats.length>1||(ats.length&&draft().st)?Math.max(1,Math.round((Math.max(...ats)-st0)/60000)):null;
+  const tv=sl.reduce((a,x)=>a+vol(x.sets),0),ns=sl.reduce((a,x)=>a+x.sets.filter(q=>q.done&&q.t!=='W').length,0);
+  const wk=[];for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);const k=ymd(d);wk.push({w:'일월화수목금토'[d.getDay()],on:dayItems(k).length>0})}
+  const wn=wk.filter(x=>x.on).length;
+  const today=mileOf(sl),all=mileAll(),earn=MAX.filter(([k])=>k!=='cardio'&&today[k]>0).map(([k,nm])=>{const bf=all[k]-today[k];return{nm,add:today[k],got:Math.floor(all[k]/1000)-Math.floor(Math.max(0,bf)/1000),st:mStars(all[k],1000),tot:all[k]}});
+  const rows=sl.map(x=>{const b=bestOf(x),nm=esc(EX[x.id]?EX[x.id].name:x.nm||'종목');return b.ok?`<div class="rpr"><span>${nm}<small>최고 세트 ${b.w}kg×${b.r} · 예상 1RM ${Math.round(b.e1)}kg</small></span><b style="color:${TIERC[b.t]}">${R.TIERS[b.t]}</b></div>`:`<div class="rpr"><span>${nm}<small>${b.why}</small></span><b class="mu">-</b></div>`}).join('');
+  const cards=[
+   `<div class="rpc"><div class="rpt">좋아요!</div><div class="rps">이번이 ${n}번째 운동이에요</div><div class="rpw">${wk.map(x=>`<span><small>${x.w}</small><i class="${x.on?'on':''}">${x.on?'✓':''}</i></span>`).join('')}</div><div class="rps">지난 7일 동안 <b>${wn}번</b> 운동했어요</div></div>`,
+   `<div class="rpc"><div class="rpt">오늘의 운동</div><div class="rpg"><div><b>${dur==null?'-':dur+'분'}</b><span>운동 시간</span></div><div><b>${fmt(tv)} kg</b><span>볼륨</span></div><div><b>${sl.length}</b><span>운동</span></div><div><b>${ns}</b><span>세트</span></div></div><div class="rpl">${sl.map(x=>`<div><b>${x.sets.filter(q=>q.done&&q.t!=='W').length}x</b> ${esc(EX[x.id]?EX[x.id].name:x.nm||'종목')}</div>`).join('')}</div></div>`,
+   `<div class="rpc"><div class="rpt">오늘의 수행 티어</div><div class="rps">종목마다 최고 세트의 예상 1RM을 내 체격 기준 티어로 환산했어요</div>${rows}</div>`,
+   `<div class="rpc"><div class="rpt">숙련도 마일리지 적립</div><div class="rps"><span class="ms s">★</span> 1천 kg · <span class="ms y">★</span> 1만 kg · <span class="ms r">★</span> 10만 kg</div>${earn.length?earn.map(e=>`<div class="rpr"><span>${e.nm} <b>+${fmt(e.add)} kg</b><small>누적 ${fmt(e.tot)} kg${e.got?` · 은색별 ${e.got}개 적립`:` · 다음 별까지 ${fmt(1000-e.tot%1000)} kg`}</small></span><span>${mStarHTML(e.st)}</span></div>`).join(''):'<div class="mu">완료한 세트가 없어 적립된 볼륨이 없어요</div>'}</div>`];
+  return `<div class="row"><b class="h2">운동 성적표</b><button class="x" data-act="close">✕</button></div><div class="rpx" id="rpx">${cards.join('')}</div><div class="rpd" id="rpd">${cards.map((_,i)=>`<i class="${i?'':'on'}"></i>`).join('')}</div><div class="mu" style="text-align:center;margin:4px 0 8px">옆으로 넘겨 보세요</div><button class="btn ghost" data-act="grades">세트 평가 자세히 보기</button><button class="btn" style="margin-top:8px" data-act="close">완료</button>`;
+}
+document.addEventListener('scroll',e=>{const x=e.target;if(!x||x.id!=='rpx')return;const i=Math.round(x.scrollLeft/x.clientWidth);document.querySelectorAll('#rpd i').forEach((d,k)=>d.classList.toggle('on',k===i))},true);
+/* ---- 10분 동안 세트 입력이 없으면 "운동이 종료되었나요?" (앱이 열려 있을 때) ---- */
+function idleCheck(){
+  if(S.mode==='admin'||ADM.cur||SCR!=='app'||document.hidden)return;const d=S.drafts&&S.drafts[T];if(!d||!d.slots)return;
+  let last=0;d.slots.forEach(x=>x&&x.sets.forEach(q=>{if(q.done&&q.at>last)last=q.at}));
+  if(!last||last<=(d.endAt||0)||Date.now()-Math.max(last,d.snz||0)<6e5)return;
+  if($('#md').classList.contains('on'))return;
+  openM(`<div class="row"><b class="h2">운동이 종료되었나요?</b><button class="x" data-act="idleno">✕</button></div><div class="mu" style="margin:8px 0 12px;line-height:1.6">마지막 세트 기록 후 ${Math.round((Date.now()-last)/60000)}분이 지났어요. 운동을 마쳤다면 저장하고 성적표를 받아 보세요.</div><button class="btn" data-act="save">네, 종료하고 성적표 보기</button><button class="btn ghost" style="margin-top:8px" data-act="idleno">아직 운동 중이에요</button>`)}
+setInterval(idleCheck,30000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)setTimeout(idleCheck,800)});
 /* ---- 홈: 서버에 들어가면 가장 먼저 뜨는 아바타 창 + 오늘/달력/통계/내 정보 버튼 ---- */
 function avatarState(){
   const st={};EQ_SLOTS.forEach(sl=>st[sl.k]={t:0,s:0});
@@ -1359,7 +1405,7 @@ function fqHTML(d){
   const all=CAT.list().filter(e=>{const h=sn(e.name+' '+e.al+' '+eqTag(e));return toks.every(t=>h.includes(t))}).sort((a,b)=>eqRank(a)-eqRank(b)||a.sort-b.sort);
   if(!all.length)return '<div class="mu" style="margin:6px 0">검색 결과가 없어요</div>';
   return '<div style="margin:6px 0;border:1px solid var(--ln);border-radius:10px;overflow:hidden">'+all.slice(0,8).map(e=>`<div class="row" style="padding:6px 10px;border-bottom:1px solid var(--ln);gap:8px"><span style="min-width:0"><b style="color:${PC[e.part]}">${P[e.part]}</b> ${esc(e.name)}${eqTag(e)?` <span class="mu">· ${eqTag(e)}</span>`:''}</span>${have.has(e.id)?'<span class="mu" style="white-space:nowrap">'+(world?'추가됨':'담김')+'</span>':`<button class="btn sm" style="white-space:nowrap" data-act="fqadd" data-id="${e.id}">${world?'올리기':'담기'}</button>`}</div>`).join('')+(all.length>8?`<div class="mu" style="padding:6px 10px">외 ${all.length-8}개 · 더 입력해 좁혀 보세요</div>`:'')+'</div>'}
-function fAddRoute(id){const sl=draft().slots;if(sl.some(x=>x&&x.id===id))return false;if(sl.filter(Boolean).length>=fMax()){toast('오늘 운동은 최대 '+fMax()+'개까지만 담을 수 있어요');return false}
+function fAddRoute(id){const sl=draft().slots;if(!draft().st)draft().st=Date.now();if(sl.some(x=>x&&x.id===id))return false;if(sl.filter(Boolean).length>=fMax()){toast('오늘 운동은 최대 '+fMax()+'개까지만 담을 수 있어요');return false}
   let i=sl.findIndex(x=>!x);if(i<0)i=sl.length;sl[i]={id,nm:EX[id].name,sets:mkSets(id)};return true}
 let FD=null;
 document.addEventListener('pointerdown',e=>{const t=e.target.closest&&e.target.closest('.ftk.ed');if(!t)return;FD={id:t.dataset.id,f:t.closest('.fld'),sx:e.clientX,sy:e.clientY,moved:false,t};try{t.setPointerCapture(e.pointerId)}catch(_){}});
@@ -1375,7 +1421,7 @@ function viewToday(){
   return `<div class="row"><div><h1 class="h1">${ADM.cur?'수업 룬 페이지':'룬PT'}</h1><div class="mu">${ADM.cur?ADM.cur.time+' · '+(ADM.cur.name||'회원 미지정'):dt+(curNo()>1?' · 오늘 '+curNo()+'번째 운동':'')}</div></div><div class="vb">완료 볼륨 (예정 ${fmt(pt)})<br><b>${fmt(tv)}</b> kg</div></div>
   ${ADM.cur?'':modePanel()}
   ${fieldBlock(d)}
-  ${ADM.cur?'':reviewHTML(d)}${ADM.cur?'<button class="btn" data-act="admdone">수업 칸에 저장</button>':'<button class="btn" data-act="save">오늘 기록 저장</button>'+'<button class="btn ghost" style="margin-top:8px" data-act="grades">세트 평가 보기</button>'}${ADM.cur?'':moreBtn(d)}`;
+  ${ADM.cur?'':reviewHTML(d)}${ADM.cur?'<button class="btn" data-act="admdone">수업 칸에 저장</button>':'<button class="btn" data-act="save">오늘 기록 저장</button>'+'<button class="btn ghost" style="margin-top:8px" data-act="report">운동 성적표 보기</button>'}${ADM.cur?'':moreBtn(d)}`;
 }
 function moreBtn(d){
   if(!d.slots.some(Boolean))return '';
@@ -1436,6 +1482,7 @@ function viewMe(){
   `<div class="h2">로그인하고 기록 이어가기</div><div class="mu" style="margin:4px 0 10px">로그인하면 기록이 계정에 저장돼서 기기를 바꿔도 이어져요. 카톡 안에서 열었다면 크롬·사파리로 열어 로그인해 주세요.</div>
   <button class="btn" style="background:#fee500;color:#191600;margin-bottom:8px" data-act="login" data-p="카카오">카카오로 시작하기</button>
   <button class="btn ghost" data-act="login" data-p="구글">구글로 시작하기</button>`}</div>
+  ${mileCard()}
   ${themeCard()}
   ${syCard()}
   ${eqCard()}
@@ -2508,7 +2555,7 @@ const A={
     if(sl.some(x=>x&&x.id===d.id)){toast('이미 장착된 종목이에요');return}
     if(sl.filter(Boolean).length>=fMax()){toast('오늘 운동은 최대 '+fMax()+'개까지만 담을 수 있어요');return}
     let i=PK.slot>=0&&!sl[PK.slot]?PK.slot:sl.findIndex(x=>!x);if(i<0)i=sl.length;
-    sl[i]={id:d.id,nm:EX[d.id].name,sets:mkSets(d.id)};persist();RC=i;openM(recHTML())},
+    if(!draft().st)draft().st=Date.now();sl[i]={id:d.id,nm:EX[d.id].name,sets:mkSets(d.id)};persist();RC=i;openM(recHTML())},
   close:()=>{persist();if(LUM&&PK.lu){PK.lu=false;openM(mapHTML());return}closeM()},
   eqwin:()=>{eqInit();const o=eqOwned();EQN={};EQ_SLOTS.forEach(sl=>{if(o[sl.k]>(S.equipSeen[sl.k]||0))EQN[sl.k]=1;S.equipSeen[sl.k]=o[sl.k]});DB.save(S);openM(eqHTML())},
   eqwear:d=>{eqInit();const g=+d.g,o=eqOwned();if(!(g>=0)||g>o[d.k])return;S.equip[d.k]=g;DB.save(S);openM(eqHTML());toast(g?'장비를 착용했어요':'장비를 벗었어요')},
@@ -2524,11 +2571,13 @@ const A={
   sdel:d=>{const x=draft().slots[RC];if(x.sets.length<=1){toast('세트는 최소 1개 필요해요');return}x.sets.splice(+d.i,1);persist();recRe()},
   sadd:d=>{const x=draft().slots[RC],m=x.sets.filter(s=>s.t==='M'),l=m[m.length-1]||x.sets[x.sets.length-1],w=d.t==='W';const at=w?Math.max(0,x.sets.findIndex(s=>s.t==='M')):x.sets.length;x.sets.splice(at,0,{t:d.t,w:w?rnd(l.w/2):l.w,r:l.r,done:false,tmp:(w||l.tmp)?1:0});persist();recRe()},
   pfill:d=>{const x=draft().slots[RC],i=+d.i,s=x.sets[i],pv=prevOf(x.id),p=pv&&pv.sets[i];if(!p)return;s.w=p.w;if(p.v)s.v=p.v;s.r=p.r;s.tmp=0;s.tr=0;RF=i;persist();recRe()},
-  sck:d=>{const x=draft().slots[RC],i=+d.i,s=x.sets[i];s.done=!s.done;if(s.done){s.tmp=0;s.tr=0;RT=90;const nx=x.sets.findIndex((q,k)=>k>i&&q.t!=='W'&&!q.done);if(nx>=0)RF=nx}else RF=i;persist();recRe()},
+  sck:d=>{const x=draft().slots[RC],i=+d.i,s=x.sets[i];s.done=!s.done;if(s.done)s.at=Date.now();else delete s.at;if(s.done){s.tmp=0;s.tr=0;RT=90;const nx=x.sets.findIndex((q,k)=>k>i&&q.t!=='W'&&!q.done);if(nx>=0)RF=nx}else RF=i;persist();recRe()},
   zfill:d=>{const x=draft().slots[RC],i=+d.i,s=x.sets[i];s.r=+d.r;s.tr=0;RF=i;persist();recRe()},
   rest0:()=>{RT=0;const b=$('#rest');if(b)b.textContent=rtTxt()},
   save:()=>{const sl=draft().slots.filter(Boolean);if(!sl.length){toast('먼저 룬에 종목을 장착해 주세요');return}
-    putToday(sl);persist();toast(curNo()>1?`오늘 ${curNo()}번째 운동 기록을 저장했어요`:'오늘 기록을 저장했어요');openM(gradeHTML(sl))},
+    draft().endAt=Date.now();putToday(sl);persist();toast(curNo()>1?`오늘 ${curNo()}번째 운동 기록을 저장했어요`:'오늘 기록을 저장했어요');openM(reportHTML(sl))},
+  idleno:()=>{draft().snz=Date.now();DB.save(S);closeM()},
+  report:()=>{const sl=draft().slots.filter(Boolean);if(!sl.length){toast('먼저 룬에 종목을 장착해 주세요');return}openM(reportHTML(sl))},
   grades:()=>{const sl=draft().slots.filter(Boolean);if(!sl.length){toast('먼저 룬에 종목을 장착해 주세요');return}openM(gradeHTML(sl))},
   newsess:async()=>{const sl=draft().slots.filter(Boolean);if(!sl.length){toast('먼저 룬에 종목을 장착해 주세요');return}
     putToday(sl);clearTimeout(stmr);
@@ -2582,7 +2631,7 @@ document.addEventListener('input',e=>{
   const s=draft().slots[RC].sets[+t.dataset.i];
   if(t.dataset.f==='v'){s.v=t.value;persist();return}
   if(s.tr===undefined)s.tr=s.tmp?1:0;
-  if(t.dataset.f==='done'){s.done=t.checked;if(t.checked){s.tmp=0;s.tr=0}}else{s[t.dataset.f]=Math.max(0,Number(t.value)||0);if(t.dataset.f==='w')s.tmp=0;else s.tr=0}
+  if(t.dataset.f==='done'){s.done=t.checked;if(t.checked){s.at=Date.now();s.tmp=0;s.tr=0}else delete s.at}else{s[t.dataset.f]=Math.max(0,Number(t.value)||0);if(t.dataset.f==='w')s.tmp=0;else s.tr=0}
   if(!s.tmp){const g=t.closest('.r2').querySelector('input[data-f=w].tmp');if(g)g.classList.remove('tmp')}
   if(!s.tr){const g=t.closest('.r2').querySelector('input[data-f=r].tmp');if(g)g.classList.remove('tmp')}
   persist();const rv=$('#rv');if(rv)rv.textContent=fmt(vol(draft().slots[RC].sets));
