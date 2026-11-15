@@ -1096,7 +1096,7 @@ function examLine(r,mem0){
     const id=Object.keys(EX).find(k=>EX[k].name===r.name),sd=RR.seed(ex,r.p.tier,r.p.stars,mem),cur=RR.current(sd?sd.e1rm:null,id?histOf(id):[]);
     const eq=t.eq1rm,gap=cur&&eq?Math.round((eq/cur-1)*100):null;
     const dist=gap==null?'':gap<=0?' · 내 추정 약 '+fmt(cur)+'kg → 도전 가능!':' · 내 추정 약 '+fmt(cur)+'kg (+'+gap+'% 남음)';
-    return `<div class="mu" style="color:#9ad">다음 시험(${R.TIERS[r.p.tier+1]}): ${t.kg}kg × ${t.reps}회 (1RM 환산 약 ${eq}kg)${dist}</div>`;
+    return `<div class="mu" style="color:#9ad">다음 시험(${embImg(r.p.tier+1,16)}${R.TIERS[r.p.tier+1]}): ${t.kg}kg × ${t.reps}회 (1RM 환산 약 ${eq}kg)${dist}</div>`;
   }catch(e){return ''}
 }
 /* ---- 세트 평가: 웜업을 뺀 완료 세트마다 내 체격 기준 시험구간 티어로 환산 (예: 브3 골1 마3) ---- */
@@ -1138,7 +1138,7 @@ function gradeHTML(sl){
     const chips=g.rows.map((r,k)=>`<span class="gs"><small>${k+1}세트</small> ${r.w}kg×${r.r} <b>${TAB[r.t]}</b></span>`).join('');
     const sp=g.spread==null?'세트가 1개라 일관성은 비교할 수 없어요':g.spread<=.08?`세트 간 편차 ${Math.round(g.spread*100)}% · 일정하게 유지했어요`:g.spread<=.2?`세트 간 편차 ${Math.round(g.spread*100)}% · 약간 차이가 있어요`:`세트 간 편차 ${Math.round(g.spread*100)}% · 차이가 커요 (피라미드·드롭 세트라면 정상이에요)`;
     const sel=[5,8,10,12];
-    const tb=g.th.map(h=>`<tr><td>${R.TIERS[h.t]}</td><td>${h.kg}×${h.reps}</td>${sel.map(r=>`<td>${Math.round(h.eq*R.rmPct(r)*2)/2}</td>`).join('')}</tr>`).join('');
+    const tb=g.th.map(h=>`<tr><td class="emw">${embImg(h.t,18)}${R.TIERS[h.t]}</td><td>${h.kg}×${h.reps}</td>${sel.map(r=>`<td>${Math.round(h.eq*R.rmPct(r)*2)/2}</td>`).join('')}</tr>`).join('');
     return `<div class="pn"><div class="row"><b>${nm}</b><b style="font-size:17px;color:var(--gd)">${g.sum}</b></div><div class="gl">${chips}</div><div class="mu" style="margin-top:6px">${sp}${g.skip.length?` · 20회 초과 ${g.skip.length}세트는 제외`:''}</div>
     <details style="margin-top:6px"><summary class="mu">내 몸 기준 티어표 보기</summary><table class="gt"><tr><th>티어</th><th>시험</th><th>5회</th><th>8회</th><th>10회</th><th>12회</th></tr>${tb}</table><div class="mu" style="font-size:11px">내 체격(키·체중·체지방률·나이)에 맞춘 무게(kg)예요. 칸의 무게×횟수를 해내면 그 티어 수준이에요.</div></details></div>`;
   }).join('');
@@ -1158,7 +1158,7 @@ const EMB=['data:image/svg+xml;base64,PHN2ZyBjbGFzcz0iZW1iIiB4bWxucz0iaHR0cDovL3
 const embImg=(t,sz)=>EMB[t]?`<img class="emi" src="${EMB[t]}" width="${sz||28}" height="${Math.round((sz||28)*1.02)}" alt="${window.RuneTier.TIERS[t]}" title="${window.RuneTier.TIERS[t]}">`:'';
 const TIERC=['#8b9099','#cf8a52','#9aa7b8','#e0a82e','#2bbfae','#2fbf73','#4f97f0','#b060f0','#f0506a','#e0b83a'];
 function rpCount(){let n=0;allDates().forEach(d=>{n+=[S.sessions[d]||[]].concat(S.more[d]||[]).filter(g=>g&&g.length).length});return n}
-function bestOf(x){const g=gradeCalc(x);if(!g.ok)return{ok:false,why:g.why};if(!g.rows.length)return{ok:false,why:'완료한 본 세트가 없어요'};const b=g.rows.slice().sort((a,c)=>c.e1-a.e1)[0];return{ok:true,t:b.t,w:b.w,r:b.r,e1:b.e1,txt:b.txt}}
+function bestOf(x,mem){const g=gradeCalc(x,mem);if(!g.ok)return{ok:false,why:g.why};if(!g.rows.length)return{ok:false,why:'완료한 본 세트가 없어요'};const b=g.rows.slice().sort((a,c)=>c.e1-a.e1)[0];return{ok:true,t:b.t,w:b.w,r:b.r,e1:b.e1,txt:b.txt}}
 function reportHTML(sl){
   const R=window.RuneTier,n=rpCount(),ats=[];sl.forEach(x=>x.sets.forEach(s=>{if(s.done&&s.at)ats.push(s.at)}));
   const st0=(draft().st&&ats.length)?Math.min(draft().st,...ats):Math.min(...ats),dur=ats.length>1||(ats.length&&draft().st)?Math.max(1,Math.round((Math.max(...ats)-st0)/60000)):null;
@@ -1204,9 +1204,15 @@ function avatarState(){
   try{eqInit();const o=eqOwned(),rows=tierRows();EQ_SLOTS.forEach(sl=>{const g=Math.min((S.equip||{})[sl.k]||0,o[sl.k]),r=rows.find(q=>q.m.id===sl.src);st[sl.k]={t:g,s:r&&r.p.tier===g?r.p.stars:0}})}catch(e){}
   const p=S.profile||{};return{type:'rune-state',st,sex:p.sex==='F'?'F':'M'};
 }
+function homeTiers(){
+  let rows=[];try{rows=tierRows().filter(q=>q.p.tier>0||(q.hist||[]).length>1)}catch(e){}
+  if(!rows.length)return '';rows=rows.slice(0,6);
+  return `<div class="pn homet"><div class="emh" style="margin:0 0 6px">${embImg(rows[0].p.tier,60)}<span><span class="mu">나의 최고 티어</span><br><b style="color:${TIERC[rows[0].p.tier]}">${esc(rows[0].name)} · ${window.RuneTier.TIERS[rows[0].p.tier]}</b></span></div><div class="emrow">${rows.slice(1).map(q=>`<span class="emc">${embImg(q.p.tier,22)}<span>${esc(q.name)} <b style="color:${TIERC[q.p.tier]}">${window.RuneTier.TIERS[q.p.tier]}</b></span></span>`).join('')}</div></div>`;
+}
 function viewHome(){
   setTimeout(()=>loadGifts(false),0);
-  return `<div class="home"><iframe id="avf" class="avf" src="avatar/avatar.html?embed=1" title="내 아바타" loading="eager"></iframe>
+  return `<div class="home">${lkCard()}<iframe id="avf" class="avf" src="avatar/avatar.html?embed=1" title="내 아바타" loading="eager"></iframe>
+  ${homeTiers()}
   <button class="btn ghost gbox" data-act="gifts"><span>🎁 선물함 <small class="mu">트레이너가 보낸 루틴</small></span><b class="gcnt${GIFTS.length?' on':''}">${GIFTS.length}</b></button>
   <div class="hgo"><button class="btn" data-act="tab" data-v="today">운동시작</button><button class="btn" data-act="tab" data-v="cal">캘린더조회</button><button class="btn" data-act="tab" data-v="stat">통계분석</button><button class="btn" data-act="tab" data-v="me">계정 정보</button></div>
   <div class="mu" style="text-align:center;margin-top:6px">아바타 화면이 안 보이면 avatar 폴더가 같은 저장소에 올라가 있는지 확인해 주세요</div></div>`;
@@ -1234,11 +1240,19 @@ async function sendGift(it){
   const m=AD().members.find(x=>x.id===it.mid)||AD().members.find(x=>x.name===(it.name||'').trim());
   if(!m||!m.uid)return 'nolink';
   const sl=(it.slots||[]).filter(Boolean);if(!sl.length)return 'empty';
-  try{const r=await sb.from('routine_gifts').insert({member_id:m.uid,gift_date:ADM.date,title:`${ADM.date.slice(5).replace('-','/')} ${it.time} 수업 루틴`,payload:{from:(S.user&&S.user.name)||'트레이너',time:it.time,no:sessNo(it,ADM.date)||0,memo:it.memo||'',goal:it.goal||'',hw:it.hw||'',slots:sl}});
-    if(r.error){console.error(r.error);return 'err:'+(r.error.message||'')}it.sent=true;return 'ok'}catch(e){return 'err:연결 오류'}
+  const title=`${ADM.date.slice(5).replace('-','/')} ${it.time} 수업 루틴`,payload={from:(S.user&&S.user.name)||'트레이너',time:it.time,no:sessNo(it,ADM.date)||0,memo:it.memo||'',goal:it.goal||'',hw:it.hw||'',slots:sl};
+  try{
+    if(it.gid){   // 이미 보낸 수업: 아직 회원이 받기 전이면 같은 선물을 고쳐서 덮어쓰기
+      const u=await sb.from('routine_gifts').update({payload,title}).eq('id',it.gid).eq('status','sent').select('id');
+      if(!u.error&&u.data&&u.data.length){it.sent=true;it.done=true;it.sentAt=Date.now();return 'upd'}
+    }
+    const r=await sb.from('routine_gifts').insert({member_id:m.uid,gift_date:ADM.date,title:it.gid?title+' (수정본)':title,payload}).select('id').single();
+    if(r.error){console.error(r.error);return 'err:'+(r.error.message||'')}
+    it.gid=r.data&&r.data.id;it.sent=true;it.done=true;it.sentAt=Date.now();return it.gid&&it.resent?'new':'ok'
+  }catch(e){return 'err:연결 오류'}
 }
-const sendMsg=(x,it)=>x==='ok'?`${it.name}님에게 루틴을 보냈어요`:x==='nolink'?'이 회원은 가입 계정이 연결되지 않았어요. 내 회원에서 계정을 연결해 주세요':x==='empty'?'보낼 룬이 없어요. 룬을 먼저 채워 주세요':'보내지 못했어요: '+x.slice(4);
-const linkRow=m=>m.uid?`<div class='sp' style='margin-bottom:8px'>🔗 가입 계정 연결됨${m.acct?' · '+esc(m.acct):''} <button class='btn ghost sm' style='width:auto;margin-left:6px' data-act='aunlink' data-id='${m.id}'>해제</button></div>`:`<div class='sp' style='margin-bottom:8px'><span class='mu'>가입 계정이 연결되지 않았어요. 연결해야 루틴을 보낼 수 있어요.</span> <button class='btn sm' style='width:auto;margin-top:6px' data-act='apicker' data-id='${m.id}'>가입 계정 연결</button></div>`;
+const sendMsg=(x,it)=>x==='upd'?`${it.name}님의 선물함 루틴을 수정해서 다시 보냈어요`:x==='ok'||x==='new'?`${it.name}님에게 루틴을 보냈어요`:x==='nolink'?'이 회원은 가입 계정이 연결되지 않았어요. 내 회원에서 계정을 연결해 주세요':x==='empty'?'보낼 룬이 없어요. 룬을 먼저 채워 주세요':'보내지 못했어요: '+x.slice(4);
+const linkRow=m=>m.uid?`<div class='sp' style='margin-bottom:8px'>🔗 가입 계정 연결됨${m.acct?' · '+esc(m.acct):''}${lkBadge(m)} <button class='btn ghost sm' style='width:auto;margin-left:6px' data-act='aunlink' data-id='${m.id}'>해제</button></div>`:`<div class='sp' style='margin-bottom:8px'><span class='mu'>가입 계정이 연결되지 않았어요. 연결해야 루틴을 보낼 수 있어요.</span> <button class='btn sm' style='width:auto;margin-top:6px' data-act='apicker' data-id='${m.id}'>가입 계정 연결</button></div>`;
 const mpList=()=>{
   if(MP.err)return `<div class="mu" style="color:#c0392b">${esc(MP.err)}</div>`;if(!MP.list)return '<div class="mu">불러오는 중…</div>';
   const q=MP.q.trim(),l=MP.list.filter(x=>!q||(x.nickname||'').includes(q)),linked=id=>AD().members.some(m=>m.uid===id);
@@ -1265,7 +1279,7 @@ function eqNewCount(){eqInit();const o=eqOwned();return EQ_SLOTS.filter(sl=>o[sl
 const eqName=(sl,g)=>g>0?EQ_G[g-1]+'의 '+sl.n:'기본 (아이언)';
 function hopeCard(){
   const R=window.RuneTier,h=S.hopeTier!=null&&S.hopeTier>=0&&S.hopeTier<=9;
-  return `<div class="pn"><div class="row"><b class="h2">운동 기준 티어</b><span class="mu">${h?'희망 '+R.TIERS[S.hopeTier]:'자동 (내 현재 티어)'}</span></div><div class="mu" style="margin:6px 0;line-height:1.6">세트 입력 아래 리커버리·노말·하드·슬레이어 구간의 기준이에요. 기본은 종목별 내 현재 티어이고, 원하면 희망 티어로 바꿀 수 있어요. 승급 점수·장비에는 영향이 없어요.</div><select id="hope" class="fi" style="width:100%"><option value=""${h?'':' selected'}>자동 (내 현재 티어)</option>${R.TIERS.slice(0,10).map((n,i)=>`<option value="${i}"${h&&S.hopeTier===i?' selected':''}>희망 티어: ${n}</option>`).join('')}</select></div>`;
+  return `<div class="pn"><div class="row"><b class="h2">운동 기준 티어</b><span class="mu emw">${h?embImg(S.hopeTier,20)+'희망 '+R.TIERS[S.hopeTier]:'자동 (내 현재 티어)'}</span></div><div class="mu" style="margin:6px 0;line-height:1.6">세트 입력 아래 리커버리·노말·하드·슬레이어 구간의 기준이에요. 기본은 종목별 내 현재 티어이고, 원하면 희망 티어로 바꿀 수 있어요. 승급 점수·장비에는 영향이 없어요.</div><select id="hope" class="fi" style="width:100%"><option value=""${h?'':' selected'}>자동 (내 현재 티어)</option>${R.TIERS.slice(0,10).map((n,i)=>`<option value="${i}"${h&&S.hopeTier===i?' selected':''}>희망 티어: ${n}</option>`).join('')}</select></div>`;
 }
 function eqCard(){
   eqInit();const w=S.equip,n=eqNewCount();
@@ -1275,7 +1289,7 @@ function eqHTML(){
   eqInit();const o=eqOwned(),R=window.RuneTier;
   return `<div class="row"><b class="h2">장비 착용창</b><button class="x" data-act="close">✕</button></div><div class="mu" style="margin:4px 0 8px;line-height:1.6">승급 시험에 합격하면 그 부위 장비를 얻어요. 착용한 장비의 등급대로 홈 아바타 부위 조명이 바뀌어요. 낮은 등급도 입을 수 있고, 얻은 장비는 사라지지 않아요.</div>`+EQ_SLOTS.map(sl=>{
     const w=Math.min(S.equip[sl.k]||0,o[sl.k]),ow=o[sl.k];
-    return `<div class="pn" style="margin:8px 0"><div class="row"><b>${sl.ic} ${sl.n}</b><span class="mu">${sl.lab} · ${ow?R.TIERS[ow]:'기록 없음'}</span></div>
+    return `<div class="pn" style="margin:8px 0"><div class="row"><b>${sl.ic} ${sl.n}</b><span class="mu emw">${sl.lab} · ${ow?embImg(ow,22)+R.TIERS[ow]:'기록 없음'}</span></div>
     <div style="margin:6px 0;font-weight:700;color:${EQ_COL[w]}">착용 중: ${eqName(sl,w)}</div>
     ${ow?`<div>${Array.from({length:ow},(_,i)=>i+1).map(g=>`<button class="eqc${g===w?' on':''}" style="--c:${EQ_COL[g]}" data-act="eqwear" data-k="${sl.k}" data-g="${g}">${EQ_G[g-1]}${g===ow&&EQN[sl.k]?'<span class="eqn">NEW</span>':''}</button>`).join('')}${w?`<button class="eqc" style="--c:#8b9099" data-act="eqwear" data-k="${sl.k}" data-g="0">벗기</button>`:''}</div>`:`<div class="mu">${sl.lab} ${R.TIERS[1]} 승급 시험에 합격하면 ${EQ_G[0]}의 ${sl.n}을 얻어요</div>`}</div>`}).join('');
 }
@@ -1294,8 +1308,8 @@ function runHTML(){
 function trialLine(r,mid){
   const R=window.RuneTier,T=r.p.tier+1,t=r.tr;let h='';
   if(t&&t.win){const o=t.win,left=TRIAL_W-o.n,need=TRIAL_N-o.got;
-    h+=`<div class="trl"><b>⚔ ${R.TIERS[T]} 승급전 진행 중 · ${o.got}/${TRIAL_N} 통과</b><div class="mu">${o.n?`${o.n}번째 운동까지 진행 · `:'수락 완료 · '}남은 기회 ${left}번 중 ${need}번 더 ${R.TIERS[T]} 수준 세트를 해내면 승급이에요</div><div class="trd">${Array.from({length:TRIAL_W},(_,i)=>`<i class="${o.h[i]?(o.h[i].p?'on':'no'):''}"></i>`).join('')}</div></div>`}
-  else if(t&&t.arr){h+=`<div class="trl"><b>⚔ 퀘스트 도착 · ${R.TIERS[T]} 승급전</b><div class="mu">${esc(t.arr)} 운동에서 ${R.TIERS[T]} 수준 세트를 해냈어요. 수락하면 이 종목을 하는 다음 ${TRIAL_W}번의 운동 중 ${TRIAL_N}번 이상 통과할 때 승급해요</div><button class="btn sm" style="width:auto;margin-top:6px" data-act="qacc" data-k="${r.m.id}"${mid?` data-id="${mid}"`:''}>퀘스트 수락</button></div>`}
+    h+=`<div class="trl"><b>⚔ ${embImg(T,18)} ${R.TIERS[T]} 승급전 진행 중 · ${o.got}/${TRIAL_N} 통과</b><div class="mu">${o.n?`${o.n}번째 운동까지 진행 · `:'수락 완료 · '}남은 기회 ${left}번 중 ${need}번 더 ${R.TIERS[T]} 수준 세트를 해내면 승급이에요</div><div class="trd">${Array.from({length:TRIAL_W},(_,i)=>`<i class="${o.h[i]?(o.h[i].p?'on':'no'):''}"></i>`).join('')}</div></div>`}
+  else if(t&&t.arr){h+=`<div class="trl"><b>⚔ 퀘스트 도착 · ${embImg(T,18)} ${R.TIERS[T]} 승급전</b><div class="mu">${esc(t.arr)} 운동에서 ${R.TIERS[T]} 수준 세트를 해냈어요. 수락하면 이 종목을 하는 다음 ${TRIAL_W}번의 운동 중 ${TRIAL_N}번 이상 통과할 때 승급해요</div><button class="btn sm" style="width:auto;margin-top:6px" data-act="qacc" data-k="${r.m.id}"${mid?` data-id="${mid}"`:''}>퀘스트 수락</button></div>`}
   else if(t&&t.fail)h+=`<div class="mu" style="margin-top:4px">지난 승급 퀘스트는 ${esc(t.fail)}에 실패로 끝났어요. 다시 ${R.TIERS[T]} 수준 세트를 해내면 새 퀘스트가 도착해요</div>`;
   if(r.gap)h+=`<div class="mu" style="margin-top:4px;color:#e5484d;font-weight:700">${esc(gapMsg(r.gap,r.name))}</div>`;
   if(r.p.tier>0){
@@ -1461,15 +1475,11 @@ function fieldBlock(d){
   const lvi=fLvInfo(route.length);
   const who=ADM.cur?'수업 라인업':'내 라인업';
   const empty=!toks.length?`<div class="mu" style="position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:0 22%">${world?'라인업이 비어 있어요. “+ 운동 올리기”로 종목을 올려 보세요':'오늘 산책로가 비어 있어요. “+ 운동 담기”로 첫 운동을 고르세요'}</div>`:'';
-  return `<div class="pn"><div class="row"><div class="h2">${world?(ADM.cur?'라인업 편집 · 월드맵':'내 라인업 · 월드맵'):(ADM.cur?'오늘 수업 · 미니맵':'오늘 운동 · 미니맵')}</div><span class="mu">${P0.t} 과정 · ${route.length}/${fMax()}</span></div>
-  <div class="fseg" role="group" aria-label="지도 보기"><button class="${world?'':'on'}" data-act="fmode" data-v="mini">미니맵 · 오늘 산책로</button><button class="${world?'on':''}" data-act="fmode" data-v="world">월드맵 · 전체 라인업</button></div>
-  <div class="fseg" role="group" aria-label="과정"><span class="mu" style="align-self:center">과정</span>${Object.keys(PHS).map(k=>`<button class="${ph===k?'on':''}" data-act="fphase" data-v="${k}">${PHS[k].t}</button>`).join('')}</div>
-  <div class="fld${ed?' ed':''}" id="fld"><svg viewBox="0 0 100 100" aria-hidden="true"><defs><marker id="fam" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path d="M0 0L10 5L0 10z" fill="#c26a00"/></marker></defs>${rings}${spokes}${arrows}</svg>${labs}${tk}${empty}</div>
-  <div class="row" style="gap:6px;flex-wrap:wrap">${world?`<button class="btn ghost sm" data-act="fadd" data-lu="1">+ 운동 올리기</button><button class="btn ghost sm" data-act="fedit">${FE?'편집 끝내기':'배치 편집'}</button>`:`<button class="btn sm" data-act="fadd">+ 운동 담기</button>`}${world&&FE&&FSEL&&pos[FSEL]?`<button class="btn ghost sm" data-act="frm" data-id="${FSEL}">라인업에서 제외</button>`:''}</div>
-  <input type="search" id="fq" placeholder="${world?'운동 검색해서 라인업에 올리기':'운동 검색해서 오늘 산책로에 담기'} (예: 벤치)" value="${esc(FQ)}" autocomplete="off" style="width:100%;margin-top:8px;box-sizing:border-box"><div id="fqr">${fqHTML(d)}</div>
-  ${world?`<div class="mu" style="margin-top:6px">${FE?'룬을 끌어서 위치를 옮겨요. ':''}${FE?'':'룬을 누르면 오늘 산책로에 담기고, 다시 누르면 빠져요.'}</div>`:''}
-  ${lvi?`<div class="wb ${lvi.c}" role="${lvi.c==='red'?'alert':'status'}"><i aria-hidden="true">!</i>${route.length}/${fMax()} · ${lvi.t}</div>`:''}
-  ${route.length?`<div class="h2" style="margin-top:10px;font-size:14px">${ADM.cur?'오늘 수업':'오늘 운동'} 산책로 · 눌러서 기록</div><div class="mu" style="margin:2px 0 4px">왼쪽 ⠿ 를 잡고 끌어서 순서를 바꿔요. ✕ 는 운동 삭제예요.</div><div class="frl" id="frl">${route.map((r,q)=>{const dn=r.x.sets.some(s=>s.done),ask=RMC===r.i;return `<div class="frow${ask?' ask':''}" data-q="${q}"><span class="fgh" role="button" aria-label="순서 바꾸기" title="끌어서 순서 바꾸기">⠿</span><button class="ex" style="flex:1;min-width:0" data-act="slot" data-i="${r.i}"><span style="min-width:0"><b class="n">${q+1}</b>${esc(EX[r.x.id].name)}${ADM.cur?'':(l=>l==='on'?'<span class="tqi">⚔ 승급전 진행 중</span>':l==='quest'?'<span class="tqi">⚔ 퀘스트 도착</span>':'')(FTI.lines[lineOf(EX[r.x.id])])}</span><span class="mu">${r.x.sets.filter(s=>s.done&&s.t!=='W').length}/${r.x.sets.filter(s=>s.t!=='W').length}세트 · ${P[EX[r.x.id].part]||''}</span></button>${ask?`<button class="btn sm" style="background:#d8372a;border-color:#d8372a;white-space:nowrap" data-act="rmx" data-i="${r.i}">기록까지 삭제</button><button class="btn ghost sm" data-act="rmc">취소</button>`:`<button class="fdx" data-act="rmx" data-i="${r.i}" aria-label="${esc(EX[r.x.id].name)} 삭제" title="이 운동 삭제">✕</button>`}</div>`}).join('')}</div>`:''}</div>`}
+  const HEAD=`<div class="pn"><div class="row"><div class="h2">${world?(ADM.cur?'라인업 편집 · 월드맵':'내 라인업 · 월드맵'):(ADM.cur?'오늘 수업':'오늘 운동')}</div><span class="mu">${P0.t} 과정 · ${route.length}/${fMax()}</span></div>`,SEGM=`<div class="fseg" role="group" aria-label="지도 보기"><button class="${world?'':'on'}" data-act="fmode" data-v="mini">미니맵 · 오늘 산책로</button><button class="${world?'on':''}" data-act="fmode" data-v="world">월드맵 · 전체 라인업</button></div>`,SEGP=`<div class="fseg" role="group" aria-label="과정"><span class="mu" style="align-self:center">과정</span>${Object.keys(PHS).map(k=>`<button class="${ph===k?'on':''}" data-act="fphase" data-v="${k}">${PHS[k].t}</button>`).join('')}</div>`,FLD=`<div class="fld${ed?' ed':''}" id="fld"><svg viewBox="0 0 100 100" aria-hidden="true"><defs><marker id="fam" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path d="M0 0L10 5L0 10z" fill="#c26a00"/></marker></defs>${rings}${spokes}${arrows}</svg>${labs}${tk}${empty}</div>`,BTN=`<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:10px">${world?`<button class="btn ghost sm" data-act="fadd" data-lu="1">+ 운동 올리기</button><button class="btn ghost sm" data-act="fedit">${FE?'편집 끝내기':'배치 편집'}</button>`:`<button class="btn sm" data-act="fadd">+ 운동 담기</button>`}${world&&FE&&FSEL&&pos[FSEL]?`<button class="btn ghost sm" data-act="frm" data-id="${FSEL}">라인업에서 제외</button>`:''}</div>`,INP=`<input type="search" id="fq" placeholder="${world?'운동 검색해서 라인업에 올리기':'운동 검색해서 오늘 산책로에 담기'} (예: 벤치)" value="${esc(FQ)}" autocomplete="off" style="width:100%;margin-top:8px;box-sizing:border-box">`,NOTE=`${world?`<div class="mu" style="margin-top:6px">${FE?'룬을 끌어서 위치를 옮겨요. ':''}${FE?'':'룬을 누르면 오늘 산책로에 담기고, 다시 누르면 빠져요.'}</div>`:''}`,WARN=`${lvi?`<div class="wb ${lvi.c}" role="${lvi.c==='red'?'alert':'status'}"><i aria-hidden="true">!</i>${route.length}/${fMax()} · ${lvi.t}</div>`:''}`,RT=`${route.length?`<div class="h2" style="margin-top:10px;font-size:14px">${ADM.cur?'오늘 수업':'오늘 운동'} 산책로 · 눌러서 기록</div><div class="mu" style="margin:2px 0 4px">왼쪽 ⠿ 를 잡고 끌어서 순서를 바꿔요. ✕ 는 운동 삭제예요.</div><div class="frl" id="frl">${route.map((r,q)=>{const dn=r.x.sets.some(s=>s.done),ask=RMC===r.i;return `<div class="frow${ask?' ask':''}" data-q="${q}"><span class="fgh" role="button" aria-label="순서 바꾸기" title="끌어서 순서 바꾸기">⠿</span><button class="ex" style="flex:1;min-width:0" data-act="slot" data-i="${r.i}"><span style="min-width:0"><b class="n">${q+1}</b>${esc(EX[r.x.id].name)}${exEmb(r.x,ADM.cur&&ADM.cur.mid?AD().members.find(z=>z.id===ADM.cur.mid):null,20)}${ADM.cur?'':(l=>l==='on'?'<span class="tqi">⚔ 승급전 진행 중</span>':l==='quest'?'<span class="tqi">⚔ 퀘스트 도착</span>':'')(FTI.lines[lineOf(EX[r.x.id])])}</span><span class="mu">${r.x.sets.filter(s=>s.done&&s.t!=='W').length}/${r.x.sets.filter(s=>s.t!=='W').length}세트 · ${P[EX[r.x.id].part]||''}</span></button>${ask?`<button class="btn sm" style="background:#d8372a;border-color:#d8372a;white-space:nowrap" data-act="rmx" data-i="${r.i}">기록까지 삭제</button><button class="btn ghost sm" data-act="rmc">취소</button>`:`<button class="fdx" data-act="rmx" data-i="${r.i}" aria-label="${esc(EX[r.x.id].name)} 삭제" title="이 운동 삭제">✕</button>`}</div>`}).join('')}</div>`:''}`;
+  if(world)return HEAD+SEGM+SEGP+FLD+BTN+INP+'<div id="fqr">'+fqHTML(d)+'</div>'+NOTE+WARN+RT+'</div>';
+  /* 개인/수업 기록: 담기·검색 → 운동 순서 → 최근 운동 → 맨 아래 미니맵 */
+  const sq=FQ.trim()?fqHTML(d):'',rc=FQ.trim()?'':fqHTML(d);
+  return HEAD+BTN+INP+'<div id="fqr">'+sq+'</div>'+WARN+RT+'<div id="fqrec">'+rc+'</div>'+'<details open style="margin-top:14px"><summary class="h2" style="font-size:14px;cursor:pointer">🗺 미니맵 · 오늘 산책로 분포</summary>'+SEGM+SEGP+FLD+'</details></div>'}
 /* ---- 회원 월드맵 관리창 ---- */
 function fCore(o,ph,sel){
   const P0=PHS[ph],n=P0.ax.length,lu=o.lu[ph];
@@ -1509,10 +1519,16 @@ function mapHTML(){
   </div>`}
 let MQ='';
 /* 최근 운동 10가지: 트레이너는 내 회원들 수업에 많이 넣은 종목, 회원은 내가 최근 한 종목 */
+/* 수업 창의 최근 운동 범위: 이 회원 / 전체 회원 */
+let RSC=null;
+function rscMem(){return S.mode==='admin'&&ADM.cur?memOfIt(ADM.cur):null}
+function rscScope(){const m=rscMem();if(!m)return 'all';if(RSC)return RSC;return Object.keys(memSess(m)).length?'mem':'all'}
+function rscBar(){const m=rscMem();if(!m)return '';const sc=rscScope();
+  return `<div id="rscb" style="display:flex;gap:6px;margin:8px 0 2px"><button class="btn sm${sc==='mem'?'':' ghost'}" style="flex:1;white-space:nowrap" data-act="rsc" data-v="mem">${esc(m.name)} 최근</button><button class="btn sm${sc==='all'?'':' ghost'}" style="flex:1;white-space:nowrap" data-act="rsc" data-v="all">전체 회원 최근</button></div>`}
 function recentEx(n){
   const seen=new Map(),put=(id,d,o)=>{if(!id||!EX[id]||EX[id].missing||EX[id].hidden)return;const k=d+'|'+String(o).padStart(5,'0'),v=seen.get(id);if(!v||k>v)seen.set(id,k)};
   try{
-    if(S.mode==='admin'){AD().members.forEach(m=>{const ss=memSess(m);Object.keys(ss).forEach(d=>ss[d].forEach((it,ii)=>(it.slots||[]).forEach((x,xi)=>{if(x)put(x.id,d,ii*20+xi)})))})}
+    if(S.mode==='admin'){const only=rscScope()==='mem'?rscMem():null;AD().members.filter(m=>!only||m.id===only.id).forEach(m=>{const ss=memSess(m);Object.keys(ss).forEach(d=>ss[d].forEach((it,ii)=>(it.slots||[]).forEach((x,xi)=>{if(x)put(x.id,d,ii*20+xi)})))})}
     else selfItems().forEach((x,i)=>put(x.id,x.date,i));
   }catch(e){}
   return [...seen.entries()].sort((a,b)=>a[1]<b[1]?1:-1).slice(0,n||10).map(e=>e[0]);
@@ -1545,8 +1561,9 @@ function fqHTML(d){
   const world=FM==='world',o=luObj();
   const have=new Set(world?o.lu[o.phase].map(t=>t.id):d.slots.filter(Boolean).map(x=>x.id));
   const all=isRec?recentEx(10).map(id=>EX[id]):CAT.list().filter(e=>{const h=sn(e.name+' '+e.al+' '+eqTag(e));return toks.every(t=>h.includes(t))}).sort(freqSort(freqEx(),(a,b)=>eqRank(a)-eqRank(b)||a.sort-b.sort));
-  if(!all.length)return isRec?'':'<div class="mu" style="margin:6px 0">검색 결과가 없어요</div>';
-  return (isRec?'<div class="mu" style="margin:6px 0 0"><b>최근 운동 10</b> · 눌러서 바로 담기</div>':'')+'<div style="margin:6px 0;border:1px solid var(--ln);border-radius:10px;overflow:hidden">'+all.slice(0,isRec?10:8).map(e=>`<div class="row" style="padding:6px 10px;border-bottom:1px solid var(--ln);gap:8px"><span style="min-width:0"><b style="color:${PC[e.part]}">${P[e.part]}</b> ${esc(e.name)}${eqTag(e)?` <span class="mu">· ${eqTag(e)}</span>`:''}</span>${have.has(e.id)?'<span class="mu" style="white-space:nowrap">'+(world?'추가됨':'담김')+'</span>':`<button class="btn sm" style="white-space:nowrap" data-act="fqadd" data-id="${e.id}">${world?'올리기':'담기'}</button>`}</div>`).join('')+(all.length>8?`<div class="mu" style="padding:6px 10px">외 ${all.length-8}개 · 더 입력해 좁혀 보세요</div>`:'')+'</div>'}
+  const bar=isRec&&!world?rscBar():'';
+  if(!all.length)return isRec?(bar?bar+'<div class="mu" style="margin:6px 0">이 회원 기록이 아직 없어요 · 전체 회원 최근을 눌러 보세요</div>':''):'<div class="mu" style="margin:6px 0">검색 결과가 없어요</div>';
+  return bar+(isRec?'<div class="mu" style="margin:6px 0 0"><b>최근 운동 10</b> · 눌러서 바로 담기</div>':'')+'<div style="margin:6px 0;border:1px solid var(--ln);border-radius:10px;overflow:hidden">'+all.slice(0,isRec?10:8).map(e=>`<div class="row" style="padding:6px 10px;border-bottom:1px solid var(--ln);gap:8px"><span style="min-width:0"><b style="color:${PC[e.part]}">${P[e.part]}</b> ${esc(e.name)}${eqTag(e)?` <span class="mu">· ${eqTag(e)}</span>`:''}</span>${have.has(e.id)?'<span class="mu" style="white-space:nowrap">'+(world?'추가됨':'담김')+'</span>':`<button class="btn sm" style="white-space:nowrap" data-act="fqadd" data-id="${e.id}">${world?'올리기':'담기'}</button>`}</div>`).join('')+(all.length>8?`<div class="mu" style="padding:6px 10px">외 ${all.length-8}개 · 더 입력해 좁혀 보세요</div>`:'')+'</div>'}
 function fAddRoute(id){const sl=draft().slots;if(!draft().st)draft().st=Date.now();if(sl.some(x=>x&&x.id===id))return false;if(sl.filter(Boolean).length>=fMax()){toast('오늘 운동은 최대 '+fMax()+'개까지만 담을 수 있어요');return false}
   let i=sl.findIndex(x=>!x);if(i<0)i=sl.length;sl[i]={id,nm:EX[id].name,sets:mkSets(id)};return true}
 let FD=null;
@@ -1563,13 +1580,19 @@ function viewToday(){
   return `<div class="row"><div><h1 class="h1">${ADM.cur?'수업 룬 페이지':'룬PT'}</h1><div class="mu">${ADM.cur?ADM.cur.time+' · '+(ADM.cur.name||'회원 미지정'):dt+(curNo()>1?' · 오늘 '+curNo()+'번째 운동':'')}</div></div><div class="vb">완료 볼륨 (예정 ${fmt(pt)})<br><b>${fmt(tv)}</b> kg</div></div>
   ${ADM.cur?'':modePanel()}
   ${fieldBlock(d)}
-  ${ADM.cur?'':reviewHTML(d)}${ADM.cur?'<button class="btn" data-act="admdone">수업 칸에 저장</button>':'<button class="btn" data-act="save">오늘 기록 저장</button>'+'<button class="btn ghost" style="margin-top:8px" data-act="report">운동 성적표 보기</button>'}${ADM.cur?'':moreBtn(d)}`;
+  ${ADM.cur?'':reviewHTML(d)}${ADM.cur?'<button class="btn" data-act="admdone">저장하고 제출</button>':'<button class="btn" data-act="save">오늘 기록 저장</button>'+'<button class="btn ghost" style="margin-top:8px" data-act="report">운동 성적표 보기</button>'}${ADM.cur?'':moreBtn(d)}`;
 }
 function moreBtn(d){
   if(!d.slots.some(Boolean))return '';
   const n=curNo()+1;
   return `<button class="btn ghost" style="margin-top:8px" data-act="newsess">+ 오늘 ${n}번째 운동 시작</button><div class="mu" style="margin-top:6px">하루에 여러 번 운동해도 기록과 점수에 모두 반영돼요. 2번째부터는 트레이너 리포트에 알림이 전달돼요.</div>`;
 }
+/* 종목의 최고 세트 티어(회원 객체를 주면 그 회원의 체격 기준, 임시·대리 회원은 체크 없는 세트도 완료로 봐요) */
+function exTier(x,m){
+  try{let mem,xx=x;if(m){if(!memBodyOk(m))return null;mem=memBody(m);xx=Object.assign({},x,{sets:(x.sets||[]).map(q=>Object.assign({},q,{done:!!(q.done||(!q.tmp&&+q.r>0))}))})}
+    const b=bestOf(xx,mem);return b.ok?b.t:null}catch(e){return null}
+}
+const exEmb=(x,m,sz)=>{const t=exTier(x,m);return t==null?'':` <span class="emw" title="${window.RuneTier.TIERS[t]}">${embImg(t,sz||20)}</span>`};
 const DTOP={};
 function dayTop(k){
   const key=k+'|'+dayVol(k)+'|'+((memberCalc()||{}).bodyKg||0);if(key in DTOP)return DTOP[key];
@@ -1684,7 +1707,7 @@ function viewMe(){
   <button class="btn ghost" data-act="login" data-p="구글">구글로 시작하기</button>`}</div>
   ${mileCard()}
   ${pushCard()}
-  ${viewCard()}
+  ${lkCard()}${viewCard()}
   ${themeCard()}
   ${syCard()}
   ${eqCard()}
@@ -1790,7 +1813,44 @@ function viewAdmEdit(){
 
 /* ===== 회원 이름·정보 수정 / 같은 사람 합치기 ===== */
 const memByName=(n,exceptId)=>AD().members.find(x=>x.id!==exceptId&&x.name===n);
-const memCnt=m=>{let n=0;Object.keys(AD().plans).forEach(d=>AD().plans[d].forEach(it=>{if(it.mid===m.id||(it.name&&it.name.trim()===m.name))n++}));return n};
+/* 수업 기록 제출(done)과 회원 발송(sent) */
+const memOfIt=it=>AD().members.find(x=>x.id===it.mid)||AD().members.find(x=>x.name===(pnm(it)));
+const sendable=it=>{const m=memOfIt(it);return !!(m&&m.uid&&(it.slots||[]).some(Boolean)&&!it.sent)};
+const submitted=it=>!!(it.sent||it.done);
+const pendSend=l=>uniqPlan(l).filter(it=>it.done&&sendable(it));
+function sendAsk(it){
+  return `<div class='row'><b class='h2'>회원에게 발송할까요?</b><button class='x' data-act='dlater'>✕</button></div><div class='mu' style='margin:6px 0 12px'>${esc(pnm(it))}님 · ${it.time} 수업 루틴을 선물함으로 보내요. 저장은 이미 끝났어요.</div><button class='btn' data-act='dsend' data-id='${it.id}'>지금 발송</button><button class='btn ghost' style='margin-top:8px' data-act='dlater'>나중에 (미발송으로 표시)</button><label class='mu' style='display:flex;gap:8px;align-items:center;margin-top:12px'><input type='checkbox' data-act='dauto' ${S.autoSend?'checked':''}> 다음부터 저장하면 묻지 않고 바로 발송</label>`;
+}
+/* ===== 같은 시간·같은 사람 중복 수업 정리 (수업 수 뻥튀기 방지) ===== */
+const pnm=it=>((it.name||it.gname||'')+'').trim();
+function nmSame(a,b){if(!a||!b)return false;if(a===b)return true;if(a.length===2&&b.length===3&&b.slice(1)===a)return true;if(b.length===2&&a.length===3&&a.slice(1)===b)return true;return false}
+function samePerson(a,b){
+  if(a.mid&&b.mid)return a.mid===b.mid;
+  const ms=(S.adm&&S.adm.members)||[],nm=x=>{if(x.mid){const m=ms.find(q=>q.id===x.mid);if(m)return m.name}return pnm(x)};
+  const na=nm(a),nb=nm(b);if(nmSame(na,nb))return true;
+  return nmSame(pnm(a),pnm(b))||nmSame(a.gname||'',b.gname||'')&&!!(a.gname&&b.gname);
+}
+const sameHr=(a,b)=>(a.time||'').slice(0,2)===(b.time||'').slice(0,2);
+const richOf=it=>(it.sent?1000:0)+(it.done?500:0)+((it.slots||[]).filter(Boolean).length*10)+(it.memo?5:0)+(it.hw?5:0)+(it.goal?3:0)+(it.special?3:0)+(it.mid?2:0)+(it.src==='gcal'?0:1);
+/* 중복을 걷어낸 새 배열 (원본은 그대로) */
+function uniqPlan(arr){
+  const out=[];(arr||[]).forEach(it=>{const i=out.findIndex(o=>sameHr(o,it)&&samePerson(o,it));if(i<0)out.push(it);else if(richOf(it)>richOf(out[i]))out[i]=it});return out;
+}
+/* 실제 데이터에서 중복 제거: 내용이 더 많은 쪽을 남기고, 빈 칸은 다른 쪽에서 채움 */
+function planDedup(){
+  const P=S.adm&&S.adm.plans;if(!P)return 0;let n=0;
+  Object.keys(P).forEach(d=>{const a=P[d];if(!a||a.length<2)return;
+    const keep=[];a.forEach(it=>{const i=keep.findIndex(o=>sameHr(o,it)&&samePerson(o,it));
+      if(i<0){keep.push(it);return}
+      let k=keep[i],o=it;if(richOf(o)>richOf(k)){keep[i]=o;o=k;k=keep[i]}
+      ['memo','hw','goal','special'].forEach(f=>{if(!k[f]&&o[f])k[f]=o[f]});
+      if(!k.mid&&o.mid){k.mid=o.mid;k.name=o.name;k.amb=0}
+      if(k.slots&&o.slots)k.slots=k.slots.map((v,j)=>v||o.slots[j]||null);
+      if(!k.no&&o.no)k.no=o.no;if(o.sent)k.sent=true;if(o.done)k.done=true;n++});
+    if(keep.length!==a.length)P[d]=keep});
+  return n;
+}
+const memCnt=m=>{let n=0;Object.keys(AD().plans).forEach(d=>uniqPlan(AD().plans[d]).forEach(it=>{if(it.mid===m.id||(it.name&&it.name.trim()===m.name))n++}));return n};
 /* "은경"(2글자)과 "이은경"(3글자)처럼 같은 사람일 수 있는 쌍 찾기 */
 function memDups(){
   const ms=AD().members,out=[],seen={};
@@ -1816,7 +1876,7 @@ function memMerge(fid,tid){
 }
 function mergeHTML(fid,tid){
   const f=AD().members.find(x=>x.id===fid),t=AD().members.find(x=>x.id===tid);if(!f||!t)return '';
-  const line=m=>`<b>${esc(m.name)}</b>${m.uid?' 🔗':''}${m.temp?' (임시)':''} · 수업 ${memCnt(m)}회 · 기록 ${(m.log||[]).length}건`;
+  const line=m=>`<b>${esc(m.name)}</b>${m.uid?(m.lk==='pending'?' ⏳':m.lk==='active'?' 🔗✔':' 🔗'):''}${m.temp?' (임시)':''} · 수업 ${memCnt(m)}회 · 기록 ${(m.log||[]).length}건`;
   return `<div class="row"><b class="h2">같은 사람으로 합칠까요?</b><button class="x" data-act="close">✕</button></div><div class="pn" style="margin-top:10px"><div style="line-height:1.9">${line(f)}<br>→ ${line(t)}</div><div class="mu" style="margin-top:8px;line-height:1.6">수업 칸·기록·티어·몸 정보가 <b>${esc(t.name)}</b>(으)로 합쳐지고 <b>${esc(f.name)}</b> 회원은 목록에서 사라져요. 되돌릴 수 없어요. 서로 다른 사람이면 취소하고 이름 끝에 구분 글자를 붙여 주세요.</div><div style="display:flex;gap:8px;margin-top:10px"><button class="btn" data-act="mmerge" data-from="${f.id}" data-to="${t.id}">합치기</button><button class="btn ghost" data-act="close">취소</button></div></div>`;
 }
 function medHTML(id){
@@ -1833,12 +1893,12 @@ function dupCard(){
 }
 let MSQ='';
 function viewMem(){
-  return `<h1 class='h1'>내 회원</h1>${syCard()}${dupCard()}<div class='pn'><div class='h2'>회원 추가</div><div class='mu'>가입한 회원은 [가입 회원에서 추가]로 계정을 연결해요. 계정이 연결된 회원에게만 루틴을 보낼 수 있어요. 이름만 직접 추가할 수도 있어요.</div><div class='row' style='gap:8px;margin-top:8px'><input type='text' id='mn' placeholder='회원 이름'><button class='btn sm' style='white-space:nowrap' data-act='amadd'>추가</button></div><button class='btn ghost' style='margin-top:8px' data-act='apicker' data-id=''>가입 회원에서 추가</button></div><div class='pn'><input type='search' id='msq' placeholder='회원 이름 검색' value='${esc(MSQ)}' autocomplete='off' style='margin-bottom:8px'><div id='mlist'>${memRowsHTML()}</div></div>`;
+  return `<h1 class='h1'>내 회원</h1>${syCard()}${dupCard()}${(L=>L.length?`<div class='pn' style='border-color:#d9a400'><b style='color:#d9a400'>🔔 재등록 임박 ${L.length}명</b><div class='mu' style='margin-top:4px'>${L.map(o=>esc(o.q.name)+' '+o.x.cur+'회').join(' · ')}</div></div>`:'')(rmLowList())}${(w=>w.length?`<div class='pn' style='border-color:#e5484d'><b style='color:#e5484d'>❗ 이번 달 잔여수업 미입력 ${w.length}명</b><div class='mu' style='margin-top:4px'>${w.map(q=>esc(q.name)).join(', ')}</div></div>`:'')(rmWarnList())}<div class='pn'><div class='h2'>회원 추가</div><div class='mu'>가입한 회원은 [가입 회원에서 추가]로 계정을 연결해요. 계정이 연결된 회원에게만 루틴을 보낼 수 있어요. 이름만 직접 추가할 수도 있어요.</div><div class='row' style='gap:8px;margin-top:8px'><input type='text' id='mn' placeholder='회원 이름'><button class='btn sm' style='white-space:nowrap' data-act='amadd'>추가</button></div><button class='btn ghost' style='margin-top:8px' data-act='apicker' data-id=''>가입 회원에서 추가</button></div><div class='pn'><input type='search' id='msq' placeholder='회원 이름 검색' value='${esc(MSQ)}' autocomplete='off' style='margin-bottom:8px'><div id='mlist'>${memRowsHTML()}</div></div>`;
 }
 function memRowsHTML(){
-  const cnt=m=>Object.values(AD().plans).reduce((a,l)=>a+l.filter(x=>x.name===m.name).length,0),q=MSQ.trim().toLowerCase().replace(/\s+/g,''),all=AD().members;
+  const ym=T.slice(0,7),dn=rmDone(ym),any=rmAny(ym),rmt=m=>{const x=rmCalc(m,ym,dn);return x.cur!=null?` · 잔여 ${x.cur}회${x.st==='diff'?' ❗':''}`:(any[m.id]?` · <b style='color:#e5484d'>❗ 잔여 미입력</b>`:'')},cnt=m=>Object.values(AD().plans).reduce((a,l)=>a+uniqPlan(l).filter(x=>x.name===m.name).length,0),q=MSQ.trim().toLowerCase().replace(/\s+/g,''),all=AD().members;
   const ms=q?all.filter(m=>String(m.name||'').toLowerCase().replace(/\s+/g,'').includes(q)):all;
-  return (q?`<div class='mu' style='margin-bottom:6px'>검색 결과 ${ms.length}명 / 전체 ${all.length}명</div>`:'')+ms.map(m=>`<div style='display:flex;gap:6px;align-items:stretch'><button class='ex' style='flex:1;min-width:0' data-act='amem' data-id='${m.id}'><span>${esc(m.name)}${m.uid?' 🔗':''}${m.temp?` <small class='mu'>(임시)</small>`:''}</span><span class='mu'>수업 ${cnt(m)}회 · 기록 ${(m.log||[]).length}건</span></button>${m.uid?'':`<button class='btn ghost sm' style='white-space:nowrap' data-act='medit' data-id='${m.id}'>수정</button>`}</div>`).join('')||`<div class='mu'>${q?'검색한 이름의 회원이 없어요':'아직 회원이 없어요'}</div>`;
+  return (q?`<div class='mu' style='margin-bottom:6px'>검색 결과 ${ms.length}명 / 전체 ${all.length}명</div>`:'')+ms.map(m=>`<div style='display:flex;gap:6px;align-items:stretch'><button class='ex' style='flex:1;min-width:0' data-act='amem' data-id='${m.id}'><span style='min-width:0'>${esc(m.name)}${m.uid?(m.lk==='pending'?' ⏳':m.lk==='active'?' 🔗✔':' 🔗'):''}${m.temp?` <small class='mu'>(임시)</small>`:''}${togetherTxt(m)?`<br><small class='mu' style='font-size:11px'>${togetherTxt(m)}</small>`:''}</span><span class='mu'>수업 ${cnt(m)}회 · 기록 ${(m.log||[]).length}건${rmt(m)}</span></button>${m.uid?'':`<button class='btn ghost sm' style='white-space:nowrap' data-act='medit' data-id='${m.id}'>수정</button>`}</div>`).join('')||`<div class='mu'>${q?'검색한 이름의 회원이 없어요':'아직 회원이 없어요'}</div>`;
 }
 function reviewHTML(d){
   const fl=d.slots.filter(Boolean);
@@ -1856,18 +1916,139 @@ function acStats(){
   const noRune=it=>!(it.slots||[]).some(Boolean),noHw=it=>!(it.hw&&it.hw.trim());
   const nW=Math.ceil((first+dim)/7),W=[];
   for(let w=0;w<nW;w++){const a=Math.max(1,w*7-first+1),b=Math.min(dim,w*7-first+7);let n=0,u=0;
-    for(let d=a;d<=b;d++)(P0[y+'-'+pad(m+1)+'-'+pad(d)]||[]).forEach(it=>{n++;if(noRune(it)||noHw(it))u++});
+    for(let d=a;d<=b;d++)uniqPlan(P0[y+'-'+pad(m+1)+'-'+pad(d)]).forEach(it=>{n++;if(noRune(it)||noHw(it))u++});
     W.push({w:w+1,a,b,n,u})}
   const tot=W.reduce((x,k)=>x+k.n,0);
   const box=k=>`<div class='asb${k.u?' w':''}'><small>${k.w}주차</small><em>${m+1}/${k.a}~${k.b}</em><b>${k.n}<u>회</u></b><span class='${k.u?'bd':''}'>미입력 ${k.u}회</span></div>`;
   return `<div class='pn' style='margin-top:10px'><div class='row'><b class='h2'>${m+1}월 (${tot}회) 주차별 수업 현황</b></div><div class='asg'>${W.map(box).join('')}</div><div class='mu' style='margin-top:6px'>미입력 = 룬 페이지에 종목이 없거나 과제 칸이 빈 수업이에요. 주차는 달력 줄(일~토) 기준이에요.</div></div>`;
 }
+/* ===== 최초등록일 · 재등록 이력 · 함께한 기간 ===== */
+const dayDiff=(a,b)=>Math.round((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/864e5);
+const okD=d=>/^\d{4}-\d{2}-\d{2}$/.test(d||'');
+function memFirstLesson(m){let f='';Object.keys(AD().plans).forEach(d=>uniqPlan(AD().plans[d]).forEach(it=>{if((it.mid===m.id||(!it.mid&&pnm(it)===m.name))&&(!f||d<f))f=d}));(m.log||[]).forEach(e=>{if(e.date&&(!f||e.date<f))f=e.date});return f}
+function togetherTxt(m){
+  if(!okD(m.since))return '';const n=dayDiff(m.since,T)+1;if(n<1)return '';
+  const rg=(m.reg||[]).filter(r=>okD(r.d)).length;
+  return `🤝 함께 운동한 지 ${n}일째${rg?' · 재등록 '+rg+'회':''}`;
+}
+function regCard(m){
+  const rg=(m.reg||[]).slice().sort((a,b)=>(a.d||'')<(b.d||'')?-1:1),fl=memFirstLesson(m),st=togetherTxt(m);
+  const idx=r=>(m.reg||[]).indexOf(r),fi=`style='padding:4px 6px'`;
+  const rows=rg.map(r=>`<div style='display:flex;gap:6px;align-items:center;margin-top:6px'><span class='mu' style='width:46px'>재등록</span><input type='date' class='fi' ${fi} data-rg='${m.id}|${idx(r)}|d' value='${esc(r.d||'')}'><input type='number' inputmode='numeric' min='0' class='fi' style='width:56px;padding:4px 6px;text-align:center' data-rg='${m.id}|${idx(r)}|n' value='${r.n==null?'':r.n}' placeholder='횟수'><span class='mu'>회</span><button class='x' data-act='rgdel' data-id='${m.id}' data-i='${idx(r)}'>✕</button></div>`).join('');
+  return `<div class='pn' style='margin-top:10px'><div class='row'><b class='h2'>등록 이력</b><span class='mu' data-rgt='${m.id}' style='font-size:11px;text-align:right'>${st||'미기록'}</span></div><div style='display:flex;gap:6px;align-items:center;margin-top:8px;flex-wrap:wrap'><span class='mu'>최초 등록일</span><input type='date' class='fi' ${fi} data-rg='${m.id}|since' value='${esc(m.since||'')}'><input type='number' inputmode='numeric' min='0' class='fi' style='width:56px;padding:4px 6px;text-align:center' data-rg='${m.id}|n0' value='${m.n0==null?'':m.n0}' placeholder='횟수'><span class='mu'>회</span>${!okD(m.since)&&fl?`<button class='btn ghost sm' data-act='rgfirst' data-id='${m.id}' data-d='${fl}'>첫 수업일(${fl.slice(2).replace(/-/g,'.')})로</button>`:''}</div>${rows}<button class='btn ghost sm' style='margin-top:8px' data-act='rgadd' data-id='${m.id}'>+ 재등록 추가</button><div class='mu' style='margin-top:6px'>선생님이 원할 때만 기록해요. <b>최초 등록일 + 등록 횟수 + 재등록 횟수</b>를 적으면 제출한 수업만큼 잔여가 자동으로 줄어요. 날짜만 적어도 회원명 아래에 함께한 기간이 표시돼요.</div></div>`;
+}
+/* ===== 회원 연결: 트레이너가 임시 연결 → 회원이 동의하면 확정 ===== */
+const LK={t:{},mine:[],noSql:false,seenP:null};
+const lkTxt={pending:'⏳ 임시 연결 · 회원 동의 대기',active:'✔ 연결 확정',declined:'거절됨',revoked:'회원이 해제함'};
+async function lkLoadTrainer(){
+  if(!sb||!UID)return;
+  try{const r=await sb.rpc('trainer_link_list');if(r.error){if(/function|does not exist|schema cache/i.test(r.error.message||''))LK.noSql=true;return}
+    const prev=LK.t;LK.t={};let ch=false;
+    (r.data||[]).forEach(x=>{LK.t[x.member_id]=x.status;if(prev[x.member_id]&&prev[x.member_id]!==x.status){ch=true;if(x.status==='active')toast((x.nickname||'회원')+'님이 연결을 수락했어요 ✔');else if(x.status==='declined')toast((x.nickname||'회원')+'님이 연결을 거절했어요');else if(x.status==='revoked')toast((x.nickname||'회원')+'님이 연결을 해제했어요')}});
+    AD().members.forEach(m=>{if(m.uid&&LK.t[m.uid]&&m.lk!==LK.t[m.uid]){m.lk=LK.t[m.uid];ch=true}});
+    if(ch){persist();render()}
+  }catch(e){}
+}
+async function lkLoadMember(){
+  if(!sb||!UID)return;
+  try{const r=await sb.rpc('member_link_list');if(r.error){if(/function|does not exist|schema cache/i.test(r.error.message||''))LK.noSql=true;return}
+    const rows=r.data||[],np=rows.filter(x=>x.status==='pending').map(x=>x.id).join(',');
+    const had=LK.seenP;LK.mine=rows;
+    if(had!==null&&np!==had&&rows.some(x=>x.status==='pending'))toast('🔗 트레이너가 연결을 요청했어요');
+    LK.seenP=np;if(had!==null&&np!==had)render();
+  }catch(e){}
+}
+const lkPoll=()=>{if(document.hidden||!sb||!UID||LK.noSql)return;
+  if(S.mode==='admin'){if(Object.values(LK.t).includes('pending')||AD().members.some(m=>m.lk==='pending'))lkLoadTrainer()}
+  else lkLoadMember()};
+setInterval(lkPoll,10000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)setTimeout(()=>{if(S.mode==='admin')lkLoadTrainer();else lkLoadMember()},400)});
+setTimeout(()=>{if(S.mode==='admin')lkLoadTrainer();else lkLoadMember()},2500);
+const lkBadge=m=>m.uid&&m.lk&&lkTxt[m.lk]?` <b style="color:${m.lk==='active'?'#2f9e5b':m.lk==='pending'?'#d9a400':'#e5484d'}">${lkTxt[m.lk]}</b>`:'';
+/* 전적 화면의 "회원 연결" 영역 */
+function lkRecBar(c){
+  if(!c||!c.id||S.mode!=='admin')return '';
+  const st=LK.t[c.id];
+  if(LK.noSql)return `<div class="mu" style="margin:8px 0">회원 연결을 쓰려면 서버에 10단계 SQL을 먼저 실행해 주세요.</div>`;
+  if(st==='active')return `<div class="sp" style="margin:8px 0">✔ 연결 확정 · 회원이 동의했어요 <button class="btn ghost sm" style="width:auto;margin-left:6px" data-act="lkcancel" data-uid="${c.id}">연결 끊기</button></div>`;
+  if(st==='pending')return `<div class="sp" style="margin:8px 0">⏳ 임시 연결 중 · 회원이 앱에서 동의하면 확정돼요 <button class="btn ghost sm" style="width:auto;margin-left:6px" data-act="lkcancel" data-uid="${c.id}">요청 취소</button></div>`;
+  return `<div style="margin:8px 0"><button class="btn sm" style="width:auto" data-act="lkreq" data-uid="${c.id}" data-nm="${esc(c.nm||'회원')}">🔗 회원 연결${st==='declined'||st==='revoked'?' 다시 요청':''}</button><div class="mu" style="margin-top:4px">${st==='declined'?'회원이 거절했어요 · ':st==='revoked'?'회원이 해제했어요 · ':''}바로 내 회원에 임시로 추가되고, 회원이 동의하면 확정돼요</div></div>`;
+}
+/* 회원 쪽: 요청 카드 (홈·계정 정보) */
+function lkCard(){
+  const l=(LK.mine||[]),p=l.filter(x=>x.status==='pending'),a=l.filter(x=>x.status==='active');
+  if(!p.length&&!a.length)return '';
+  const pr=p.map(x=>`<div class="pn" style="border-color:#d9a400"><div class="h2">🔗 ${esc(x.trainer_name)} 트레이너가 연결을 요청했어요</div><div class="mu" style="margin:4px 0 8px">수락하면 트레이너가 내 수업·운동 기록을 관리하고 루틴을 보낼 수 있어요. 언제든 해제할 수 있어요.</div><div style="display:flex;gap:8px"><button class="btn" style="flex:1" data-act="lkresp" data-id="${x.id}" data-a="accept">수락</button><button class="btn ghost" style="flex:1" data-act="lkresp" data-id="${x.id}" data-a="decline">거절</button></div></div>`).join('');
+  const ac=a.length?`<div class="pn"><div class="h2">내 트레이너</div>${a.map(x=>`<div class="row" style="margin-top:6px"><span>${esc(x.trainer_name)} <b style="color:#2f9e5b">✔ 연결됨</b></span><button class="btn ghost sm" style="width:auto" data-act="lkresp" data-id="${x.id}" data-a="revoke">연결 해제</button></div>`).join('')}</div>`:'';
+  return pr+ac;
+}
+/* ===== 월별 수업 진행 · 잔여수업 대조 ===== */
+const ymP=ym=>{const [y,m]=ym.split('-').map(Number);const d=new Date(y,m-2,1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')};
+const rmGet=(m,ym)=>(m.rm&&m.rm[ym])||{};
+const rmN=v=>(v===''||v==null||isNaN(+v))?null:+v;
+/* ym 달에 제출 완료된 수업 수 (이번 달이면 오늘까지) */
+function rmDone(ym){
+  const o={},cut=ym===T.slice(0,7)?T:(ym<T.slice(0,7)?ym+'-31':null);if(!cut)return o;
+  const ms=AD().members;
+  Object.keys(AD().plans).forEach(d=>{if(d.slice(0,7)!==ym||d>cut)return;
+    uniqPlan(AD().plans[d]).forEach(it=>{if(!submitted(it))return;
+      const m=ms.find(q=>q.id===it.mid)||(!it.mid&&ms.find(q=>q.name===pnm(it)));if(m)o[m.id]=(o[m.id]||0)+1})});
+  return o;
+}
+function rmAny(ym){   // 그 달에 수업이 잡혔거나 잔여를 적어 둔 회원
+  const o={};Object.keys(AD().plans).forEach(d=>{if(d.slice(0,7)!==ym)return;uniqPlan(AD().plans[d]).forEach(it=>{const m=AD().members.find(q=>q.id===it.mid)||(!it.mid&&AD().members.find(q=>q.name===pnm(it)));if(m)o[m.id]=1})});
+  AD().members.forEach(m=>{if(m.rm&&m.rm[ym])o[m.id]=1});return o;
+}
+const belongs=(it,m)=>it.mid===m.id||(!it.mid&&pnm(it)===m.name);
+/* 등록 횟수(최초 m.n0 + 재등록 m.reg[].n)로 월초 잔여·그 달 추가분 계산 */
+function rmAuto(m,ym){
+  const start=ym+'-01',end=ym+'-31',sn=okD(m.since)?m.since:null,n0=rmN(m.n0);let open=null,add=0;
+  if(sn&&n0!=null){if(sn<start)open=n0;else if(sn<=end)add+=n0}
+  (m.reg||[]).filter(r=>okD(r.d)&&r.n!=null).forEach(r=>{if(r.d<start){if(open!=null)open+=r.n}else if(r.d<=end)add+=r.n});
+  if(open!=null){let dn=0;Object.keys(AD().plans).forEach(d=>{if(d>=sn&&d<start)uniqPlan(AD().plans[d]).forEach(it=>{if(submitted(it)&&belongs(it,m))dn++})});open-=dn}
+  return{open,add,on:!!(sn&&n0!=null)};
+}
+function rmCalc(m,ym,done){
+  const r=rmGet(m,ym),pv=rmGet(m,ymP(ym)),au=rmAuto(m,ym),o0=rmN(r.o),c=rmN(r.c),d=done[m.id]||0;
+  const oa=o0!=null?o0:au.open!=null?au.open:rmN(pv.c);
+  const base=oa!=null?oa:(au.add>0?0:null),exp=base==null?null:base+au.add-d;
+  let st;
+  if(exp==null&&c==null)st='none';
+  else if(au.on)st=c==null?'auto':c===exp?'ok':'diff';
+  else if(c==null)st='nocur';else if(exp==null)st='noopen';else st=c===exp?'ok':'diff';
+  const cur=c!=null?c:exp;
+  return{o:oa,oAuto:o0==null&&oa!=null,c,d,exp,st,cur,add:au.add,auto:au.on,diff:c!=null&&exp!=null?c-exp:0};
+}
+function rmBadge(x){
+  return {none:"<b style='color:#e5484d'>❗ 잔여 미입력</b>",nocur:"<b style='color:#d9a400'>⚠ 현재 잔여 입력 필요</b>",noopen:"<b style='color:#d9a400'>⚠ 월초 잔여 없음</b>",
+    ok:"<b style='color:#2f9e5b'>✔ 일치</b>",auto:"<b style='color:#2f9e5b'>✔ 자동 계산</b>",diff:`<b style='color:#e5484d'>❗ ${x.diff>0?'+':''}${x.diff} 차이</b>`}[x.st]+(x.cur!=null&&x.cur<=3?(x.cur<0?" · <b style='color:#e5484d'>마이너스</b>":" · <b style='color:#d9a400'>🔔 재등록 임박</b>"):'');
+}
+function rmInputs(m,ym,x){
+  const r=rmGet(m,ym),inp=(f,v,ph)=>`<input type='number' inputmode='numeric' min='0' class='fi' style='width:58px;padding:4px 6px;text-align:center' data-rm='${m.id}|${ym}|${f}' value='${v==null?'':v}' placeholder='${ph||''}'>`;
+  return {o:inp('o',r.o,x.oAuto?x.o:''),c:inp('c',r.c,x.exp==null?'':x.exp)};
+}
+function rmCard(){
+  const {y,m}=ACM,ym=y+'-'+String(m+1).padStart(2,'0'),done=rmDone(ym),any=rmAny(ym),ms=AD().members.filter(q=>any[q.id]).sort((a,b)=>a.name<b.name?-1:1);
+  const isNow=ym===T.slice(0,7),cut=isNow?`${+T.slice(5,7)}/${+T.slice(8)}일 현재`:ym>T.slice(0,7)?'아직 진행 전':'월말 기준';
+  let tot=0,warn=0;
+  const rows=ms.map(q=>{const x=rmCalc(q,ym,done),i=rmInputs(q,ym,x);tot+=x.d;if(x.st!=='ok'&&x.st!=='auto')warn++;
+    return `<div style='display:grid;grid-template-columns:minmax(0,1fr) 34px 58px 58px 40px;gap:6px;align-items:center;padding:6px 0;border-top:1px solid var(--bd,#8883)'><span style='min-width:0'><b>${esc(q.name)}</b><br><span data-rs='${q.id}' style='font-size:12px'>${rmBadge(x)}</span></span><b style='text-align:center'>${x.d}</b>${i.o}${i.c}<span class='mu' data-rx='${q.id}' style='text-align:center'>${x.exp==null?'-':x.exp}</span></div>`}).join('');
+  return `<div class='pn' style='margin-top:10px'><div class='row'><b class='h2'>${m+1}월 회원별 수업 · 잔여 대조</b><span class='mu'>${cut} · 총 ${tot}회</span></div><div class='mu' style='margin:4px 0 8px'>수업기록을 <b>제출 완료</b>한 수업만 세요. 월초 잔여에서 진행 수를 뺀 <b>예상 잔여</b>와 직접 입력한 <b>현재 잔여</b>가 같으면 ✔예요. (월초 칸이 비면 지난달 현재 잔여를 이어받아요)${warn?`<br><span style='color:#e5484d'>확인 필요 ${warn}명</span>`:''}</div>${ms.length?`<div style='display:grid;grid-template-columns:minmax(0,1fr) 34px 58px 58px 40px;gap:6px;font-size:11px;color:var(--mu,#888)'><span>회원</span><span style='text-align:center'>진행</span><span style='text-align:center'>월초</span><span style='text-align:center'>현재</span><span style='text-align:center'>예상</span></div>${rows}`:`<div class='mu'>이 달에 잡힌 수업이 없어요</div>`}</div>`;
+}
+function rmWarnList(){   // 이번 달 잔여를 한 번도 안 적은 회원
+  const ym=T.slice(0,7),done=rmDone(ym),any=rmAny(ym);return AD().members.filter(q=>any[q.id]&&rmCalc(q,ym,done).st==='none');
+}
+function rmLowList(){const ym=T.slice(0,7),done=rmDone(ym),any=rmAny(ym);return AD().members.filter(q=>any[q.id]).map(q=>({q,x:rmCalc(q,ym,done)})).filter(o=>o.x.cur!=null&&o.x.cur<=3)}
+function rmMemCard(m){
+  const ym=T.slice(0,7),x=rmCalc(m,ym,rmDone(ym)),i=rmInputs(m,ym,x);
+  return `<div class='pn' style='margin-top:10px${x.st==='none'?';border-color:#e5484d':''}'><div class='row'><b class='h2'>잔여 수업 · ${+ym.slice(5)}월</b><span data-rs='${m.id}'>${rmBadge(x)}</span></div><div style='display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap'><span class='mu'>월초 잔여</span>${i.o}<span class='mu'>현재 잔여</span>${i.c}<span class='mu'>(진행 ${x.d}회 · 예상 <span data-rx='${m.id}'>${x.exp==null?'-':x.exp}</span>회)</span></div><div style='margin-top:6px;font-size:18px'><b>잔여 ${x.cur==null?'<span class="mu">?</span>':x.cur}회</b></div></div>`;
+}
 function viewACal(){
+  if(!window.__dd){window.__dd=1;const dd=planDedup();if(dd){persist();setTimeout(()=>toast('중복 수업 '+dd+'건을 정리했어요'),50)}}
   const {y,m}=ACM,first=new Date(y,m,1).getDay(),dim=new Date(y,m+1,0).getDate();
   let cells=['일','월','화','수','목','금','토'].map(x=>`<span>${x}</span>`).join('')+'<i></i>'.repeat(first);
-  for(let i=1;i<=dim;i++){const k=`${y}-${String(m+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`,n=(AD().plans[k]||[]).length;
-    cells+=`<button data-act='aday' data-d='${k}' data-l='${n?(n<5?1:n<9?2:3):0}' class='${k===ADM.date?'sel':''} ${k===T?'td':''}'>${i}${n?`<i class='st' style='color:inherit'>${n}</i>`:''}</button>`}
-  return `<h1 class='h1'>관리자 · 수업 달력</h1><div class='mu'>날짜를 누르면 그날의 일일 스케줄이 열려요. 칸 안의 숫자는 수업 칸 수예요.</div>${gcalCard()}<div class='pn' style='margin-top:10px'><div class='row'><button class='x' data-act='amon2' data-v='-1'>◀</button><b class='h2'>${y}년 ${m+1}월</b><button class='x' data-act='amon2' data-v='1'>▶</button></div><div class='cal' style='margin-top:8px'>${cells}</div></div>${acStats()}`;
+  for(let i=1;i<=dim;i++){const k=`${y}-${String(m+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`,n=uniqPlan(AD().plans[k]).length;
+    const pd=k<=T&&pendSend(AD().plans[k]||[]).length;cells+=`<button data-act='aday' data-d='${k}' data-l='${n?(n<5?1:n<9?2:3):0}' style='position:relative' class='${k===ADM.date?'sel':''} ${k===T?'td':''}'>${i}${n?`<i class='st' style='color:inherit'>${n}</i>`:''}${pd?`<b style='position:absolute;top:1px;right:4px;color:#e5484d;font-size:10px'>●</b>`:''}</button>`}
+  return `<h1 class='h1'>관리자 · 수업 달력</h1><div class='mu'>날짜를 누르면 그날의 일일 스케줄이 열려요. 칸 안의 숫자는 수업 칸 수예요.</div>${gcalCard()}<div class='pn' style='margin-top:10px'><div class='row'><button class='x' data-act='amon2' data-v='-1'>◀</button><b class='h2'>${y}년 ${m+1}월</b><button class='x' data-act='amon2' data-v='1'>▶</button></div><div class='cal' style='margin-top:8px'>${cells}</div></div>${acStats()}${rmCard()}`;
 }
 function viewDay(){
   const d=ADM.date,l=plan(d),by={};l.forEach(x=>{by[x.time]=x});
@@ -1876,17 +2057,19 @@ function viewDay(){
     if(!it)return `<button class='tr empty' data-act='aslot' data-t='${h}'><b>${h}</b><span class='mu'>+ 비어 있음 · 눌러서 룬 페이지 추가</span><span></span></button>`;
     const n=it.slots.filter(Boolean).length;
     return `<button class='tr' data-act='aslot' data-t='${h}'><b>${h}</b><span><b>${it.amb?"<span style='color:#e5484d'>❗ </span>":''}${esc(it.name)||'회원 미지정'}</b>${it.no?' · '+it.no+'차시':''}<br><span class='mu'>룬 ${n}/6${it.special?' · 특이사항':''}</span></span><span class='mu'>${it.sent?'✔ 발송':'작성중'}</span></button>`}).join('');
-  return `<div class='row'><button class='x' data-act='adnav' data-v='-1'>◀</button><b class='h2'>${dt}</b><button class='x' data-act='adnav' data-v='1'>▶</button></div><div class='mu' style='margin:6px 0 10px'>수업 ${l.length}칸 · 시간을 누르면 그 시간의 룬 페이지가 팝업으로 열려요</div>${rows}`;
+  return `<div class='row'><button class='x' data-act='adnav' data-v='-1'>◀</button><b class='h2'>${dt}</b><button class='x' data-act='adnav' data-v='1'>▶</button></div><div class='mu' style='margin:6px 0 10px'>수업 ${uniqPlan(l).length}칸 · 시간을 누르면 그 시간의 룬 페이지가 팝업으로 열려요</div>${rows}`;
 }
 function viewDay2(){
   const d=ADM.date,l=plan(d),by={};l.forEach(x=>{by[x.time]=x});
   const dt=new Date(d+'T00:00:00').toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'short'});
   const sent=l.filter(x=>x.sent).length;
+  const showE=ADM.showE||!l.length;let run=0;const flush=()=>{const r=run;run=0;return r?`<button class='tr empty' data-act='ashowe'><b>＋</b><span class='mu'>빈 시간 ${r}칸 · 눌러서 펼치기</span><span></span></button>`:''};
   const rows=HRS.map(h=>{const it=by[h];
-    if(!it)return `<button class='tr empty' data-act='aslot' data-t='${h}'><b>${h}</b><span class='mu'>+ 비어 있음 · 눌러서 룬 페이지 추가</span><span></span></button>`;
+    if(!it){if(!showE){run++;return ''}return `<button class='tr empty' data-act='aslot' data-t='${h}'><b>${h}</b><span class='mu'>+ 비어 있음 · 눌러서 룬 페이지 추가</span><span></span></button>`}
     const n=it.slots.filter(Boolean).length;
-    return `<div class='trw'><button class='tr' data-act='aslot' data-t='${h}'><b>${h}</b><span><b>${it.amb?"<span style='color:#e5484d'>❗ </span>":''}${esc(it.name)||'회원 미지정'}</b>${it.no?' · '+it.no+'차시':''}<br><span class='mu'>룬 ${n}/6${n?' · '+esc(it.slots.filter(Boolean).map(x=>EX[x.id].name).join(', ')):''}${it.special?' · 특이사항':''}</span></span><span class='mu'>${it.sent?'✔ 발송':'작성중'}</span></button><div class='ra'><button class='btn ghost sm' data-act='acopy' data-id='${it.id}'>카톡 복사</button><a class='btn ghost sm' href='${esc(calURL(it,d))}' target='_blank' rel='noopener'>캘린더</a><button class='btn ghost sm' data-act='asend' data-id='${it.id}'>발송</button><button class='btn ghost sm' data-act='adel' data-id='${it.id}'>삭제</button></div></div>`}).join('');
-  return `<div class='row'><button class='x' data-act='adnav' data-v='-1'>◀</button><b class='h2'>${dt}</b><button class='x' data-act='adnav' data-v='1'>▶</button></div><div class='mu' style='margin:6px 0 10px'>수업 ${l.length}칸 · 발송 ${sent} · 시간을 누르면 룬 페이지가 팝업으로 열려요</div>${rows}<div class='pn' style='margin-top:10px'><button class='btn' data-act='asendall'>회원 지정된 칸 모두 발송</button><div class='row' style='gap:8px;margin-top:8px'><button class='btn ghost sm' data-act='aexp'>다른 기기로 보내기 (코드 복사)</button></div><details style='margin-top:8px'><summary class='mu'>다른 기기에서 가져오기</summary><textarea id='imp' class='fi' rows='3' style='width:100%;margin-top:6px' placeholder='복사한 코드를 붙여넣기'></textarea><button class='btn sm' data-act='aimp' style='margin-top:6px'>가져오기</button></details><button class='btn ghost' style='margin-top:8px' data-act='agcal'>구글 캘린더에서 [PT] 일정 불러오기</button></div>`;
+    return flush()+`<div class='trw'><button class='tr' data-act='aslot' data-t='${h}'><b>${h}</b><span><b>${it.amb?"<span style='color:#e5484d'>❗ </span>":''}${esc(it.name)||'회원 미지정'}</b>${it.no?' · '+it.no+'차시':''}<br><span class='mu'>룬 ${n}/6${n?' · '+esc(it.slots.filter(Boolean).map(x=>EX[x.id].name).join(', ')):''}${it.special?' · 특이사항':''}</span></span><span class='mu'>${it.sent?'✔ 발송':it.done?(sendable(it)?"<b style='color:#e5484d'>제출·미발송</b>":'✔ 제출 완료'):'작성중'}</span></button><div class='ra'>${it.sent?'':`<button class='btn sm${it.done?' ghost':''}' data-act='asub' data-id='${it.id}'>${it.done?'제출 취소':'✔ 제출'}</button>`}<button class='btn ghost sm' data-act='acopy' data-id='${it.id}'>카톡 복사</button><a class='btn ghost sm' href='${esc(calURL(it,d))}' target='_blank' rel='noopener'>캘린더</a><button class='btn ghost sm' data-act='asend' data-id='${it.id}'>발송</button><button class='btn ghost sm' data-act='adel' data-id='${it.id}'>삭제</button></div></div>`}).join('')+flush();
+  const pend=pendSend(l),todo=l.filter(x=>!submitted(x)).length;
+  return `<div class='row'><button class='x' data-act='adnav' data-v='-1'>◀</button><b class='h2'>${dt}</b><button class='x' data-act='adnav' data-v='1'>▶</button></div><div class='mu' style='margin:6px 0 10px'>수업 ${uniqPlan(l).length}칸 · 발송 ${sent}${todo?' · 미입력 '+todo:''} · 시간을 누르면 룬 페이지가 열려요</div>${todo?`<button class='btn sm' style='margin-bottom:8px;width:100%' data-act='anext'>▶ 다음 미입력 수업 입력하기 (${todo}건)</button>`:''}${pend.length?`<div class='pn' style='border-color:#e5484d;margin-bottom:8px'><div class='row'><b style='color:#e5484d'>미발송 ${pend.length}건</b><button class='btn sm' style='width:auto' data-act='asendall'>한 번에 발송</button></div><div class='mu'>${pend.map(x=>esc(pnm(x))).join(', ')}</div></div>`:''}${showE&&l.length?`<button class='x' style='font-size:12px;margin-bottom:4px' data-act='ashowe'>빈 시간 접기</button>`:''}${rows}<div class='pn' style='margin-top:10px'><button class='btn' data-act='asendall'>회원 지정된 칸 모두 발송</button><div class='row' style='gap:8px;margin-top:8px'><button class='btn ghost sm' data-act='aexp'>다른 기기로 보내기 (코드 복사)</button></div><details style='margin-top:8px'><summary class='mu'>다른 기기에서 가져오기</summary><textarea id='imp' class='fi' rows='3' style='width:100%;margin-top:6px' placeholder='복사한 코드를 붙여넣기'></textarea><button class='btn sm' data-act='aimp' style='margin-top:6px'>가져오기</button></details><button class='btn ghost' style='margin-top:8px' data-act='agcal'>구글 캘린더에서 [PT] 일정 불러오기</button></div>`;
 }
 const ALR={wk:'',rows:null,busy:false};
 async function loadAlerts(){const w=wk(ADM.date).days;if(!sb||!UID||ALR.busy||ALR.wk===w[0])return;ALR.busy=true;ALR.wk=w[0];
@@ -1932,15 +2115,16 @@ function memHTML(id){
   return `<div class='row'><b class='h2'>${esc(m.name)}${m.temp?' (임시)':''}</b><button class='x' data-act='close'>✕</button></div><div class='mu' style='margin:4px 0 8px'>주간 리포트에서 저장된 특이사항·과제 기록 (관리자 전용)</div>${linkRow(m)}`+(lg.map(e=>`<div class='sp'><b>${e.date.slice(5).replace('-','/')}</b> <span class='mu'>${e.time}${e.no?' · '+e.no+'차시':''}</span><div>특이사항: ${esc(e.special)||'없음'} ${e.special&&e.spDone?'✔':''}</div><div>과제: ${esc(e.hw)||'없음'} ${e.hw?(e.hwDone?'✔ 인지':'(미인지)'):''}</div></div>`).join('')||`<div class='mu'>아직 저장된 기록이 없어요. 주간 탭의 [회원정보에 저장]을 눌러 주세요.</div>`);
 }
 let MC={id:null,y:0,m:0,d:null};
-function memSess(m){const o={};Object.keys(AD().plans).forEach(d=>AD().plans[d].forEach(it=>{if(it.mid===m.id||(it.name&&it.name.trim()===m.name))(o[d]=o[d]||[]).push(it)}));(m.log||[]).forEach(e=>{const a=o[e.date]||(o[e.date]=[]);if(!a.some(x=>x.time===e.time))a.push({time:e.time,no:e.no,special:e.special,hw:e.hw,hwDone:e.hwDone,slots:[],memo:'',goal:''})});return o}
+function memSess(m){const o={};Object.keys(AD().plans).forEach(d=>uniqPlan(AD().plans[d]).forEach(it=>{if(it.mid===m.id||(it.name&&it.name.trim()===m.name))(o[d]=o[d]||[]).push(it)}));(m.log||[]).forEach(e=>{const a=o[e.date]||(o[e.date]=[]);if(!a.some(x=>x.time===e.time))a.push({time:e.time,no:e.no,special:e.special,hw:e.hw,hwDone:e.hwDone,slots:[],memo:'',goal:''})});return o}
 function memHTML2(){
   const m=AD().members.find(x=>x.id===MC.id),ss=memSess(m),y=MC.y,mo=MC.m;
   const first=new Date(y,mo,1).getDay(),dim=new Date(y,mo+1,0).getDate();
   let cells=DOW.map(x=>`<span>${x}</span>`).join('')+'<i></i>'.repeat(first);
   for(let i=1;i<=dim;i++){const k=`${y}-${String(mo+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
-    cells+=`<button data-act='mday' data-d='${k}' data-l='0' class='${ss[k]?'hl':''} ${k===MC.d?'sel':''} ${k===T?'td':''}'>${i}</button>`}
+    const tt=(ss[k]||[]).reduce((a,it)=>(it.slots||[]).filter(Boolean).reduce((b,x)=>{const t=exTier(x,m);return t!=null&&t>b?t:b},a),-1);
+    cells+=`<button data-act='mday' data-d='${k}' data-l='0' style='position:relative' class='${ss[k]?'hl':''} ${k===MC.d?'sel':''} ${k===T?'td':''}'>${i}${tt>=0?`<span class='ce'>${embImg(tt,15)}</span>`:''}</button>`}
   const day=(ss[MC.d]||[]).slice().sort((a,b)=>a.time<b.time?-1:1).map(it=>{
-    const rn=it.slots.filter(Boolean).map(x=>`<div class='sp'><b style='color:${PC[EX[x.id].part]}'>${P[EX[x.id].part]}</b> ${EX[x.id].name} <span class='mu'>${fmt(vol(x.sets,x.id))}kg</span><div class='mu'>${x.sets.map(s=>(s.t==='W'?'W ':s.t==='F'?'F ':'')+setTxt(s)+(s.done?' ✔':'')).join(' · ')}</div>${x.note?`<div class='mu'>📝 ${esc(x.note)}</div>`:''}</div>`).join('');
+    const rn=it.slots.filter(Boolean).map(x=>`<div class='sp'><b style='color:${PC[EX[x.id].part]}'>${P[EX[x.id].part]}</b> ${EX[x.id].name}${exEmb(x,m,22)} <span class='mu'>${fmt(vol(x.sets,x.id))}kg</span><div class='mu'>${x.sets.map(s=>(s.t==='W'?'W ':s.t==='F'?'F ':'')+setTxt(s)+(s.done?' ✔':'')).join(' · ')}</div>${x.note?`<div class='mu'>📝 ${esc(x.note)}</div>`:''}</div>`).join('');
     const blk=(t,v,dn)=>v?`<div class='sp'><span class='mu'>${t}</span><br>${esc(v)}${dn?' ✔':''}</div>`:'';
     return `<div class='pn'><b class='h2'>${it.time}–${endT(it.time)}${it.no?' · '+it.no+'차시':''}</b>${rn||`<div class='mu' style='margin-top:6px'>룬 페이지 기록이 없어요</div>`}${blk('수업 내용',it.memo)}${blk('특이사항',it.special,it.spDone)}${blk('과제',it.hw,it.hwDone)}${blk('다음 수업 목표',it.goal)}</div>`}).join('');
   return `<div class='row'><button class='x' style='font-size:14px' data-act='amem' data-id='${m.id}'>◀ 회원정보</button><button class='x' data-act='close'>✕</button></div><b class='h2'>${esc(m.name)}${m.temp?' (임시)':''} 운동일지</b><div class='row' style='margin:8px 0'><button class='x' data-act='mmon' data-v='-1'>◀</button><b>${y}년 ${mo+1}월</b><button class='x' data-act='mmon' data-v='1'>▶</button></div><div class='cal'>${cells}</div><div class='mu' style='margin:6px 0 10px'>형광펜 날짜는 PT 수업이 있던 날이에요. 날짜를 누르면 그날의 진행 내용이 나와요.</div>${MC.d?(day||`<div class='mu'>${MC.d}에는 수업 기록이 없어요</div>`):''}`;
@@ -1957,7 +2141,7 @@ function proxyHTML(m){
   h+=`<div class="pn" style="margin:10px 0"><div class="h2">시작 티어 설정</div><div class="mu" style="margin:4px 0 8px">같이 운동할 때의 수행능력을 보고 종목 줄의 시작 티어를 정해요. 이후 기록부터 별이 쌓여요.</div><div class="row" style="gap:6px"><select id="pxl" class="fi" style="flex:1;min-width:0">${lines.map(e=>`<option value="${e.id}">${esc(e.name)}</option>`).join('')}</select><select id="pxt" class="fi" style="width:42%">${R.TIERS.slice(0,10).map((n,i)=>`<option value="${i}">${n}</option>`).join('')}</select></div><button class="btn ghost sm" style="margin-top:8px" data-act="mstart" data-id="${m.id}">시작 티어 적용</button></div>`;
   h+=tierPanel(rows,mem,m.id);
   const own={};rows.forEach(r=>{own[r.m.id]=Math.max(r.p.tier,...(r.hist||[]).map(x=>x.t))});
-  h+=`<div class="pn" style="margin:10px 0"><div class="h2">장비 (획득)</div><div class="mu" style="line-height:1.8">${EQ_SLOTS.map(sl=>{const g=own[sl.src]||0;return `<span style="color:${EQ_COL[g]}">${sl.ic} ${g?EQ_G[g-1]:'기본'}</span>`}).join(' · ')}</div></div>`;
+  h+=`<div class="pn" style="margin:10px 0"><div class="h2">장비 (획득)</div><div class="mu" style="line-height:1.8">${EQ_SLOTS.map(sl=>{const g=own[sl.src]||0;return `<span class="emw" style="color:${EQ_COL[g]}">${sl.ic} ${g?embImg(g,18):''}${g?EQ_G[g-1]:'기본'}</span>`}).join(' · ')}</div></div>`;
   return h;
 }
 function memInfo(id){const m=AD().members.find(x=>x.id===id);return memInfo0(id)+(m&&!m.uid?proxyHTML(m):'')}
@@ -1967,10 +2151,10 @@ function memInfo0(id){
   all.forEach((e,i)=>{e.n=e.it.no||i+1});
   const nx=Math.max(0,...all.map(e=>e.n))+1,rev=all.slice().reverse(),lg=(rev.map(e=>e.it.goal).find(g=>g&&g.trim()))||'';
   const hist=rev.map(e=>{const it=e.it,rn=(it.slots||[]).filter(Boolean);
-    const rl=rn.map(x=>`<div class='mu'>${P[EX[x.id].part]} ${EX[x.id].name} · ${x.sets.map(s=>(s.t==='W'?'W ':s.t==='F'?'F ':'')+setTxt(s)+(s.done?'✔':'')).join(' ')}${x.note?' · 📝 '+esc(x.note):''}</div>`).join('')||`<div class='mu'>룬 페이지 기록 없음</div>`;
+    const rl=rn.map(x=>`<div class='mu'>${P[EX[x.id].part]} ${EX[x.id].name}${exEmb(x,m,18)} · ${x.sets.map(s=>(s.t==='W'?'W ':s.t==='F'?'F ':'')+setTxt(s)+(s.done?'✔':'')).join(' ')}${x.note?' · 📝 '+esc(x.note):''}</div>`).join('')||`<div class='mu'>룬 페이지 기록 없음</div>`;
     const blk=(t,v)=>v?`<div class='sp'><span class='mu'>${t}</span><br>${esc(v)}</div>`:'';
     return `<div class='pn'><div class='row'><b class='h2'>${e.n}회차</b><span class='mu'>${e.d.slice(5).replace('-','/')} ${it.time}</span></div><div style='margin:8px 0;font-size:15px'><span class='mu'>과제</span><br><b>${esc(it.hw)||`<span class='mu'>없음</span>`}</b>${it.hw&&it.hwDone?' ✔ 인지':''}</div><details><summary class='mu'>특이사항 · 룬 페이지 · 수업 내용 보기</summary>${blk('특이사항',it.special)}<div class='sp'><span class='mu'>룬 페이지</span>${rl}</div>${blk('수업 내용',it.memo)}${blk('다음 수업 목표',it.goal)}</details></div>`}).join('');
-  return `<div class='row'><b class='h2'>${esc(m.name)}${m.temp?' (임시)':''}</b><div style='display:flex;gap:6px;align-items:center'><button class='btn sm' data-act='mcal' data-id='${m.id}'>캘린더</button><button class='btn sm' data-act='mmap' data-id='${m.id}'>월드맵</button>${m.uid?'':`<button class='btn ghost sm' data-act='medit' data-id='${m.id}'>수정</button>`}<button class='x' data-act='close'>✕</button></div></div><div class='pn' style='margin-top:10px;border-color:var(--gd)'><div class='row'><b class='h2'>다음 수업 중점사항 · 도전과제</b><span class='mu'>${nx}회차 예정</span></div><textarea class='fi' rows='3' data-mf='${m.id}' style='width:100%;margin-top:8px' placeholder='(다음 수업에서 집중할 점, 도전할 목표를 적어요)'>${esc(m.focus)}</textarea>${lg?`<div class='mu' style='margin-top:6px'>최근 수업에서 적은 다음 수업 목표: ${esc(lg)}</div>`:''}</div><div class='mu' style='margin:10px 0 4px'>수업 흐름 (최신순)</div>${hist||`<div class='mu'>아직 수업 기록이 없어요</div>`}`;
+  return `<div class='row'><div style='min-width:0'><b class='h2'>${esc(m.name)}${m.temp?' (임시)':''}</b>${togetherTxt(m)?`<div class='mu' data-rgs='${m.id}' style='font-size:11px'>${togetherTxt(m)}</div>`:''}</div><div style='display:flex;gap:6px;align-items:center;flex-shrink:0;white-space:nowrap'>${m.uid?`<button class='btn sm' data-act='mrec' data-id='${m.id}'>전적</button>`:''}<button class='btn sm' data-act='mcal' data-id='${m.id}'>캘린더</button><button class='btn sm' data-act='mmap' data-id='${m.id}'>월드맵</button>${m.uid?'':`<button class='btn ghost sm' data-act='medit' data-id='${m.id}'>수정</button>`}<button class='x' data-act='close'>✕</button></div></div><div class='pn' style='margin-top:10px;border-color:var(--gd)'><div class='row'><b class='h2'>다음 수업 중점사항 · 도전과제</b><span class='mu'>${nx}회차 예정</span></div><textarea class='fi' rows='3' data-mf='${m.id}' style='width:100%;margin-top:8px' placeholder='(다음 수업에서 집중할 점, 도전할 목표를 적어요)'>${esc(m.focus)}</textarea>${lg?`<div class='mu' style='margin-top:6px'>최근 수업에서 적은 다음 수업 목표: ${esc(lg)}</div>`:''}</div>${rmMemCard(m)}${regCard(m)}<div class='mu' style='margin:10px 0 4px'>수업 흐름 (최신순)</div>${hist||`<div class='mu'>아직 수업 기록이 없어요</div>`}`;
 }
 const SB_URL='https://vpdemapnpunsuxqdffgn.supabase.co',SB_KEY='sb_publishable_fonyE5eloRwvXb7hacPTow_d6JR0zMv',APP_URL='https://upvible.github.io/Rune-PT/';
 const syncTxt=()=>({off:'이 기기에만 저장',ok:'저장됨',err:'저장 실패 · 다시 시도 중',busy:'저장 중…'}[SYNC]||'');
@@ -2096,7 +2280,7 @@ function syCard(){return `<div class="pn"><div class="row"><b class="h2">동기�
 function syDiag(){
   if(!sb)return '진단: 서버에 연결되지 않은 주소예요 ('+location.hostname+'). 배포 주소(upvible.github.io)에서 열어야 서버와 연동돼요';
   if(!UID)return '진단: 로그인되지 않았어요'+(GUEST?' (체험 모드는 이 기기에만 저장돼요)':'');
-  const ad=S.adm,dates=ad?Object.keys(ad.plans).filter(d=>ad.plans[d].length):[],n=ad?ad.plans&&dates.reduce((a,d)=>a+ad.plans[d].length,0):0;
+  const ad=S.adm,dates=ad?Object.keys(ad.plans).filter(d=>ad.plans[d].length):[],n=ad?ad.plans&&dates.reduce((a,d)=>a+uniqPlan(ad.plans[d]).length,0):0;
   return '진단: 계정 '+UID.slice(0,8)+' · '+(S.user?S.user.provider:'?')+' · 역할 '+(ROLE||'?')+' · 회원 '+(ad?ad.members.length:0)+'명 · 수업 '+n+'칸('+dates.length+'일) · 서버 반영 '+Object.keys(S.sy&&S.sy.ts||{}).length+'개 문서 · 동기화 '+(SY.ready?'켜짐':'꺼짐');
 }
 async function syRefresh(force){await syPull();await syFlush();sySess(force);}
@@ -2213,7 +2397,7 @@ function gcCands(n,members){
   return c;
 }
 const gcHour=t=>t.slice(0,2)+':00';
-const gcBlank=it=>!(it.slots&&it.slots.some(Boolean))&&!it.memo&&!it.hw&&!it.goal&&!it.special&&!it.sent;
+const gcBlank=it=>!(it.slots&&it.slots.some(Boolean))&&!it.memo&&!it.hw&&!it.goal&&!it.special&&!it.sent&&!it.done;
 /* 가져온 일정을 시간표에 반영. 돌려주는 값: 집계 */
 function gcApply(evs,from,to){
   const inst=gcExpand(evs,from,to),st={got:0,auto:0,amb:0,none:0,ot:0,skip:0,del:0,upd:0},seen={};
@@ -2227,7 +2411,7 @@ function gcApply(evs,from,to){
     const pl=plan(x.d);let it=pl.find(z=>z.id===id);
     const cands=gcCands(g.name,members);
     if(!it){
-      const same=pl.find(z=>z.time===h);if(same){st.skip++;return}
+      const same=pl.find(z=>sameHr(z,{time:h}));if(same){st.skip++;st.dup=(st.dup||0)+1;return}
       it={id,time:h,name:g.name,mid:null,no:0,memo:'',hw:'',goal:'',special:'',slots:Array(6).fill(null),sent:false,src:'gcal',gname:g.name};
       pl.push(it);changed=true;
     }else if(it.time!==h&&gcBlank(it)&&!pl.find(z=>z.time===h&&z.id!==id)){it.time=h;changed=true;st.upd++}
@@ -2255,7 +2439,7 @@ async function gcalRun(manual){
     const r=await sb.functions.invoke('ical-fetch',{body:{url}});
     if(r.error)throw r.error;const ics=r.data&&r.data.ics;if(!ics||ics.indexOf('BEGIN:VCALENDAR')<0)throw new Error((r.data&&r.data.error)||'캘린더 내용을 받지 못했어요');
     const a=new Date();a.setDate(a.getDate()-7);const b=new Date();b.setDate(b.getDate()+35);
-    const res=gcApply(gcParse(ics),ymd(a),ymd(b));
+    const res=gcApply(gcParse(ics),ymd(a),ymd(b));const dd=planDedup();if(dd){res.changed=true;res.st.dd=dd}
     GC.stat=res.st;GC.last=Date.now();
     if(res.changed){persist();if(!syTyping()&&!ADM.cur)render()}
     if(manual)toast('캘린더에서 '+res.st.got+'건을 확인했어요')
@@ -2474,6 +2658,7 @@ const eqTag=e=>(e.eq&&RuneCatalog.EQ_LABEL[e.eq])||(e.m?'머신':'');
 const eqRank=e=>{const i=RuneCatalog.EQ_ORDER.indexOf(e.eq);return i<0?99:i};
 const PK_EQ=[['','전체'],['barbell','바벨'],['dumbbell','덤벨'],['cable','케이블'],['machine','머신'],['smith','스미스'],['body','맨몸']];
 function pickList(){
+  const rp=$('#rscp');if(rp)rp.innerHTML=PK.part==='recent'?rscBar():'';
   const q=PK.q.trim(),sn=s=>String(s||'').toLowerCase().replace(/[^0-9a-z가-힣]/g,''),toks=q?q.split(/\s+/).map(sn).filter(Boolean):[];
   const eqOk=e=>!PK.eq||(PK.eq==='machine'?['machine','plate','pin'].indexOf(e.eq)>=0:e.eq===PK.eq);
   const rec=!toks.length&&PK.part==='recent'?recentEx(10):null;
@@ -2483,7 +2668,7 @@ function pickList(){
 function openPick(i,lu){
   PK.slot=i;PK.q='';PK.lu=!!lu;PK.part=recentEx(1).length?'recent':(PK.part==='recent'?'chest':PK.part);
   openM(`<div class="row"><b class="h2">종목 장착</b><button class="x" data-act="close">✕</button></div>
-  <input type="text" id="pq" placeholder="종목 검색 (예: 풀오버, 덤벨 프레스)"><div class="tabs" id="ptabs"><button data-act="ptab" data-v="recent" class="${PK.part==='recent'?'on':''}">최근</button>${Object.keys(P).map(k=>`<button data-act="ptab" data-v="${k}" class="${PK.part===k?'on':''}">${P[k]}</button>`).join('')}</div><div class="tabs" id="eqt" style="margin-top:4px">${PK_EQ.map(([k,n])=>`<button data-act="peq" data-v="${k}" class="${(PK.eq||'')===k?'on':''}">${n}</button>`).join('')}</div><label class="mu" style="display:flex;gap:6px;align-items:center;margin-bottom:4px"><input type="checkbox" id="pm" ${PK.m?'checked':''}> 머신·케이블만 보기</label><div id="pl"></div>`);
+  <input type="text" id="pq" placeholder="종목 검색 (예: 풀오버, 덤벨 프레스)"><div class="tabs" id="ptabs"><button data-act="ptab" data-v="recent" class="${PK.part==='recent'?'on':''}">최근</button>${Object.keys(P).map(k=>`<button data-act="ptab" data-v="${k}" class="${PK.part===k?'on':''}">${P[k]}</button>`).join('')}</div><div class="tabs" id="eqt" style="margin-top:4px">${PK_EQ.map(([k,n])=>`<button data-act="peq" data-v="${k}" class="${(PK.eq||'')===k?'on':''}">${n}</button>`).join('')}</div><label class="mu" style="display:flex;gap:6px;align-items:center;margin-bottom:4px"><input type="checkbox" id="pm" ${PK.m?'checked':''}> 머신·케이블만 보기</label>${rscMem()?'<div id="rscp"></div>':''}<div id="pl"></div>`);
   pickList();
 }
 /* ---- 세트 입력 옆 실시간 구간 안내: 이 무게에서 몇 회면 노말 / 하드 / 슬레이어인지 (내 현재 티어 기준, 참고용) ---- */
@@ -2522,7 +2707,7 @@ function expGauge0(x){
   try{const R=window.RuneTier,e=EX[x.id],m=R.metaFor(e.name,{machine:e.m,region:e.part==='leg'?'lower':'upper'}),r=tierRows().find(q=>q.m.id===m.id);
     if(!r)return `<div class="eg"><div class="egt"><span>다음 ★까지</span><b>첫 기록을 저장하면 시작돼요</b></div><div class="egb"><i style="width:0%"></i></div></div>`;
     const p=r.p,mu=R.multOf(S.level),pc=Math.round(p.pct*100);
-    return `<div class="eg"><div class="egt"><span>${R.TIERS[p.tier]} ${p.stars}★ → ${p.stars>=R.MAX_STARS?'최대':(p.stars+1)+'★'}</span><b>${p.stars>=R.MAX_STARS?'최대 별 달성':pc+'% · 남은 EXP '+fmt(R.toKg(p.toNext,mu))+'kg'}</b></div><div class="egb"><i style="width:${pc}%"></i></div></div>`}catch(err){return ''}
+    return `<div class="eg"><div class="egt"><span class="emw">${embImg(p.tier,22)}${R.TIERS[p.tier]} ${p.stars}★ → ${p.stars>=R.MAX_STARS?'최대':(p.stars+1)+'★'}</span><b>${p.stars>=R.MAX_STARS?'최대 별 달성':pc+'% · 남은 EXP '+fmt(R.toKg(p.toNext,mu))+'kg'}</b></div><div class="egb"><i style="width:${pc}%"></i></div></div>`}catch(err){return ''}
 }
 let RF=-1,RFc=-1,RT=0;
 const recRe=()=>{const sh=$('#md .sheet'),y=sh?sh.scrollTop:0;openM(recHTML());const n=$('#md .sheet');if(n){n.style.animation='none';n.scrollTop=y}};
@@ -2595,7 +2780,7 @@ function recSessionHTML(g,mem){
 }
 function recDetail(){
   const c=REC.cur,R=window.RuneTier;
-  let h=`<div class="pn"><div class="row"><button class="btn ghost sm" style="width:auto" data-act="recback">← 목록</button><b class="h2">${esc(c.nm||'회원')}</b></div>`;
+  let h=`<div class="pn"><div class="row"><button class="btn ghost sm" style="width:auto" data-act="recback">← 목록</button><b class="h2">${esc(c.nm||'회원')}</b></div>${lkRecBar(c)}`;
   if(REC.derr)return h+`<div class="mu" style="color:#c0392b;margin-top:8px">${esc(REC.derr)}</div></div>`;
   if(!REC.ov)return h+'<div class="mu" style="margin-top:8px">불러오는 중…</div></div>';
   const o=REC.ov,b=o.body||{},p=o.profile||{},st=o.stat||{};
@@ -2686,6 +2871,9 @@ const A={
   aq2:d=>{const it=plan(d.d).find(x=>x.id===d.id);if(!it)return;const k=d.k==='hw'?'hwDone':'spDone';it[k]=!it[k];persist();render()},
   aopen:d=>{ADM.date=d.d;A.aslot({t:d.t})},
   amem:d=>{openM(memInfo(d.id))},
+  rgadd:d=>{const m=AD().members.find(x=>x.id===d.id);if(!m)return;(m.reg=m.reg||[]).push({d:T});persist();openM(memInfo(d.id))},
+  rgdel:d=>{const m=AD().members.find(x=>x.id===d.id);if(!m||!m.reg)return;m.reg.splice(+d.i,1);if(!m.reg.length)delete m.reg;persist();openM(memInfo(d.id))},
+  rgfirst:d=>{const m=AD().members.find(x=>x.id===d.id);if(!m)return;m.since=d.d;persist();openM(memInfo(d.id))},
   medit:d=>{openM(medHTML(d.id))},
   msave:d=>{const m=AD().members.find(x=>x.id===d.id);if(!m)return;
     const nn=($('#men').value||'').trim(),sex=$('#mes').value,age=$('#mea').value,h=$('#meh').value,w=$('#mew').value,bfv=$('#mef').value;
@@ -2726,7 +2914,7 @@ const A={
   aday:d=>{ADM.date=d.d;tab='day';render();scrollTo(0,0)},
   amon2:d=>{ACM.m+=+d.v;if(ACM.m<0){ACM.m=11;ACM.y--}if(ACM.m>11){ACM.m=0;ACM.y++}render()},
   adnav:d=>{const x=new Date(ADM.date+'T00:00:00');x.setDate(x.getDate()+ +d.v);ADM.date=ymd(x);render()},
-  aslot:d=>{const l=plan(ADM.date);let it=l.find(x=>x.time===d.t);if(!it){it={id:'p'+Date.now(),time:d.t,name:'',mid:null,no:0,memo:'',hw:'',goal:'',special:'',slots:Array(6).fill(null),sent:false};l.push(it)}ADM.cur=it;ADM.live=innerWidth<900&&!it.memo;ADM.pop=true;persist();render()},
+  aslot:d=>{RSC=null;const l=plan(ADM.date);let it=l.find(x=>x.time===d.t);if(!it){it={id:'p'+Date.now(),time:d.t,name:'',mid:null,no:0,memo:'',hw:'',goal:'',special:'',slots:Array(6).fill(null),sent:false};l.push(it)}ADM.cur=it;ADM.live=innerWidth<900&&!it.memo;ADM.pop=true;persist();render()},
   acal:d=>{const w=window.open(calURL(fi(d.id),ADM.date),'_blank');if(w){w.opener=null}else toast('캘린더 창이 막혔어요. 목록 화면의 캘린더 버튼을 이용해 주세요')},
   grade:d=>{S.reviews=S.reviews||{};const r=S.reviews[T]||(S.reviews[T]={g:'',t:''});r.g=r.g===d.g?'':d.g;const sl=draft().slots.filter(Boolean);if(sl.length)putToday(sl);persist();render()},
   guest:()=>{GUEST=true;SCR=profOk(S.profile)?'servers':'onboard';if(SCR==='onboard')OB=obFrom(S.profile);render()},
@@ -2772,13 +2960,39 @@ const A={
   aexp:()=>{const l=plan(ADM.date);if(!l.length){toast('보낼 수업 칸이 없어요');return}copyText('RPT1:'+btoa(unescape(encodeURIComponent(JSON.stringify({d:ADM.date,items:l})))),'코드를 복사했어요. 카톡 나와의 채팅 등으로 보내세요')},
   aimp:()=>{const raw=($('#imp').value||'').trim();try{if(!raw.startsWith('RPT1:'))throw 0;const o=JSON.parse(decodeURIComponent(escape(atob(raw.slice(5)))));const l=plan(o.d);let add=0,upd=0,skip=0;o.items.forEach(it=>{const i=l.findIndex(x=>x.id===it.id);if(i>=0){l[i]=it;upd++}else if(l.some(x=>x.time===it.time)){skip++}else{l.push(it);add++}});ADM.date=o.d;persist();render();toast(`가져왔어요 (추가 ${add}, 갱신 ${upd}, 시간 겹쳐 건너뜀 ${skip})`)}catch(e){toast('코드를 읽을 수 없어요. 처음부터 끝까지 복사했는지 확인해 주세요')}},
   aback:()=>closeEdit(),
-  admdone:()=>{closeEdit();toast('수업 칸에 저장했어요')},
+  admdone:()=>{const it=ADM.cur;if(it)it.done=true;const m=it&&memOfIt(it),can=it&&sendable(it);closeEdit();if(!it)return;
+    if(can){if(S.autoSend&&sb&&UID){A.asend({id:it.id});return}openM(sendAsk(it))}
+    else toast('수업 칸에 저장했어요'+(m&&!m.uid?' · 계정 미연결이라 발송 없이 저장':''))},
+  asub:d=>{const it=fi(d.id);if(!it)return;if(it.sent){toast('이미 발송된 수업이에요');return}it.done=!it.done;persist();render();
+    if(!it.done){toast('제출을 취소했어요');return}
+    if(sendable(it)){if(S.autoSend&&sb&&UID)A.asend({id:it.id});else openM(sendAsk(it))}else toast('제출했어요')},
+  rsc:d=>{RSC=d.v;const h=fqHTML(draft()),l=$('#fqrec');if(l&&!FQ.trim())l.innerHTML=h;if($('#pl'))pickList()},
+  lkreq:async d=>{
+    try{const r=await sb.rpc('trainer_link_request',{p_member:d.uid});if(r.error){toast(r.error.message||'요청하지 못했어요');return}
+      LK.t[d.uid]=r.data||'pending';const nm=d.nm||'회원';let m=AD().members.find(x=>x.uid===d.uid);
+      if(!m){const same=AD().members.find(x=>!x.uid&&x.name===nm);
+        if(same&&confirm('내 회원 중 같은 이름 "'+nm+'" 님이 있어요.\n그 회원에 연결할까요?\n(취소하면 새 회원으로 추가해요)')){m=same;m.uid=d.uid;m.acct=nm}
+        else{m={id:'m'+Date.now(),name:nm,uid:d.uid,acct:nm};AD().members.push(m)}}
+      m.lk=LK.t[d.uid];persist();render();toast(m.lk==='active'?'이미 연결이 확정된 회원이에요':'임시 연결했어요 · 회원이 동의하면 확정돼요')}
+    catch(e){toast('연결 오류')}},
+  lkcancel:async d=>{
+    try{const r=await sb.rpc('trainer_link_cancel',{p_member:d.uid});if(r.error){toast(r.error.message||'처리하지 못했어요');return}
+      delete LK.t[d.uid];const m=AD().members.find(x=>x.uid===d.uid);if(m)delete m.lk;persist();render();toast('연결 요청을 거두었어요 · 내 회원 목록에는 그대로 남아요')}catch(e){toast('연결 오류')}},
+  lkresp:async d=>{
+    try{const r=await sb.rpc('member_link_respond',{p_id:+d.id,p_action:d.a});if(r.error){toast(r.error.message||'처리하지 못했어요');return}
+      await lkLoadMember();render();toast(d.a==='accept'?'연결했어요 ✔':d.a==='decline'?'거절했어요':'연결을 해제했어요')}catch(e){toast('연결 오류')}},
+  dsend:d=>{closeM();A.asend({id:d.id})},
+  dlater:()=>{closeM();toast('저장했어요 · 미발송으로 표시돼요')},
+  dauto:d=>{},
+  ashowe:()=>{ADM.showE=!ADM.showE;render()},
+  anext:()=>{const l=plan(ADM.date).slice().sort((a,b)=>a.time<b.time?-1:1),it=l.find(x=>!submitted(x));if(!it){toast('이 날 수업은 모두 입력했어요');return}A.aslot({t:it.time})},
+  mrec:d=>{const m=AD().members.find(x=>x.id===d.id);if(!m||!m.uid)return;LUM=null;$('#md').classList.remove('on');$('#md').innerHTML='';tab='rec';recOpen(m.uid,m.name)},
   adel:d=>{const l=plan(ADM.date),i=l.findIndex(x=>x.id===d.id);if(i>=0)l.splice(i,1);persist();render()},
   aparse:()=>{const c=ADM.cur;PZ=pzParse(c.memo||'',CAT.list());openM(parseHTML())},
   parseok:()=>{const sl=draft().slots;let n=0,dup=0,full=0;PZ.rows.forEach(r=>{if(!r.pick)return;if(sl.some(x=>x&&x.id===r.pick)){dup++;return}const i=sl.findIndex(x=>!x);if(i<0){full++;return}sl[i]={id:r.pick,nm:EX[r.pick].name,sets:mkSets(r.pick)};n++});persist();closeM();render();toast(n+'개 종목을 룬에 넣었어요'+(dup?` (중복 ${dup}개 제외)`:'')+(full?` (칸이 부족해 ${full}개 못 넣음)`:''))},
   acopy:d=>copyText(kakaoText(fi(d.id),ADM.date)),
-  asend:d=>{const it=fi(d.id);if(!it.name.trim()){toast('회원을 먼저 지정해 주세요');return}if(!sb||!UID){toast('서버에 로그인해야 보낼 수 있어요');return}sendGift(it).then(x=>{persist();render();toast(sendMsg(x,it))})},
-  asendall:async()=>{if(!sb||!UID){toast('서버에 로그인해야 보낼 수 있어요');return}let ok=0,no=0,bad=0;for(const it of plan(ADM.date)){if(!it.name.trim()||it.sent)continue;const x=await sendGift(it);if(x==='ok')ok++;else if(x==='nolink')no++;else bad++}persist();render();toast(`${ok}건 보냈어요${no?' · 계정 미연결 '+no+'건':''}${bad?' · 실패 '+bad+'건':''}`)},
+  asend:d=>{const it=fi(d.id);if(!it.name.trim()){toast('회원을 먼저 지정해 주세요');return}if(!sb||!UID){toast('서버에 로그인해야 보낼 수 있어요');return}it.resent=!!it.gid;sendGift(it).then(x=>{persist();render();toast(sendMsg(x,it))})},
+  asendall:async()=>{if(!sb||!UID){toast('서버에 로그인해야 보낼 수 있어요');return}let ok=0,no=0,bad=0;for(const it of plan(ADM.date)){if(!it.name.trim()||it.sent)continue;const x=await sendGift(it);if(x==='ok'||x==='upd'||x==='new')ok++;else if(x==='nolink')no++;else bad++}persist();render();toast(`${ok}건 보냈어요${no?' · 계정 미연결 '+no+'건':''}${bad?' · 실패 '+bad+'건':''}`)},
   pushon:()=>pushOn(),pushoff:()=>pushOff(),
   rectab:d=>{REC.tab=d.v;if((d.v==='feed'?REC.feed:REC.members)===null)REC.err='';recLoad(false);render()},
   recopen:d=>recOpen(d.uid,d.nm,d.d,d.no),
@@ -2909,7 +3123,7 @@ document.addEventListener('input',e=>{
   if(t.dataset.pf){OB[t.dataset.pf]=t.value;obRefresh();return}
   if(t.id==='recq'){REC.q=t.value;clearTimeout(REC.tm);REC.tm=setTimeout(async()=>{REC.feed=null;REC.members=null;await recLoad(false);const e=$('#recq');if(e){e.focus();try{e.setSelectionRange(e.value.length,e.value.length)}catch(x){}}},350);return}
   if(t.id==='mpq'){MP.q=t.value;const l=$('#mpl');if(l)l.innerHTML=mpList();return}
-  if(t.id==='fq'){FQ=t.value;const l=$('#fqr');if(l)l.innerHTML=fqHTML(draft());return}
+  if(t.id==='fq'){FQ=t.value;const l=$('#fqr'),r=$('#fqrec'),h=fqHTML(draft());if(r){if(FQ.trim()){if(l)l.innerHTML=h;r.innerHTML=''}else{if(l)l.innerHTML='';r.innerHTML=h}}else if(l)l.innerHTML=h;return}
   if(t.id==='mq'){MQ=t.value;const l=$('#mqr');if(l)l.innerHTML=mqHTML();return}
   if(t.id==='msq'){MSQ=t.value;const l=$('#mlist');if(l)l.innerHTML=memRowsHTML();return}
   if(t.id==='pq'){PK.q=t.value;pickList();return}
@@ -2920,6 +3134,14 @@ document.addEventListener('input',e=>{
   if(t.dataset.pr!==undefined){const r=PZ.rows[+t.dataset.pr];if(r)r.pick=t.value;return}
   if(t.id==='hope'){S.hopeTier=t.value===''?null:+t.value;persist();saveHope();const hd=t.closest('.pn').querySelector('.row .mu');if(hd)hd.textContent=S.hopeTier==null?'자동 (내 현재 티어)':'희망 '+window.RuneTier.TIERS[S.hopeTier];return}
   if(t.id==='rvt'){S.reviews=S.reviews||{};const r=S.reviews[T]||(S.reviews[T]={r:0,t:''});r.t=t.value;persist();return}
+  if(t.dataset.act==='dauto'){S.autoSend=t.checked;persist();return}
+  if(t.dataset.rg){const [id,a,f]=t.dataset.rg.split('|'),m=AD().members.find(x=>x.id===id);if(m){
+      if(a==='n0'){if(t.value==='')delete m.n0;else m.n0=Math.max(0,Math.floor(+t.value)||0)}
+      else if(a==='since'){if(t.value)m.since=t.value;else delete m.since}
+      else{const r=(m.reg||[])[+a];if(r){if(f==='n'){if(t.value==='')delete r.n;else r.n=Math.max(0,Math.floor(+t.value)||0)}else r.d=t.value}}
+      persist();const s2=togetherTxt(m);document.querySelectorAll(`[data-rgt="${id}"]`).forEach(e=>e.textContent=s2||'미기록');document.querySelectorAll(`[data-rgs="${id}"]`).forEach(e=>e.textContent=s2)}return}
+  if(t.dataset.rm){const [id,ym,f]=t.dataset.rm.split('|'),m=AD().members.find(x=>x.id===id);if(m){m.rm=m.rm||{};const r=m.rm[ym]||(m.rm[ym]={});if(t.value==='')delete r[f];else r[f]=Math.max(0,Math.floor(+t.value)||0);if(!Object.keys(r).length)delete m.rm[ym];if(!Object.keys(m.rm).length)delete m.rm;
+    const x=rmCalc(m,ym,rmDone(ym));document.querySelectorAll(`[data-rs="${id}"]`).forEach(e=>e.innerHTML=rmBadge(x));document.querySelectorAll(`[data-rx="${id}"]`).forEach(e=>e.textContent=x.exp==null?'-':x.exp);persist()}return}
   if(t.dataset.mf){const m=AD().members.find(x=>x.id===t.dataset.mf);if(m){m.focus=t.value;persist()}return}
   if(t.dataset.nf){const x=draft().slots[RC];if(x){x.note=t.value;persist()}return}
   if(!t.dataset.f)return;
