@@ -26,6 +26,7 @@ html{scroll-padding-top:env(safe-area-inset-top,0px)}
 button{font:inherit;color:inherit;cursor:pointer}
 button:focus-visible,input:focus-visible{outline:2px solid var(--cy);outline-offset:2px}
 #app{max-width:480px;margin:0 auto;padding:12px 12px 84px}
+.grb{display:inline-block;font-size:10px;line-height:1;padding:3px 5px;border-radius:6px;color:#fff;vertical-align:middle}
 .pn{background:var(--pn);border:1px solid var(--ln);border-radius:12px;padding:12px;margin-bottom:12px}
 .row{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .h1{font-size:20px;font-weight:900;margin:0}.h2{font-size:16px;font-weight:700}.mu{color:var(--mu);font-size:12px}
@@ -772,7 +773,7 @@ code{font-size:11px;background:var(--bg);padding:1px 4px;border-radius:4px}
    · 모르는 id(삭제·미동기화)가 기록에 있어도 화면이 멈추지 않고 '(삭제된 종목)'으로 표시해요. */
 (function (root) {
   'use strict';
-  const PARTS = ['chest', 'back', 'leg', 'shoulder', 'arm', 'core'];
+  const PARTS = ['chest', 'back', 'leg', 'shoulder', 'arm', 'core', 'cardio'];
   const SEED = [
     {"id":"chest0","name":"벤치프레스","part":"chest","aliases":"","is_machine":false,"status":"active","sort":0,"tier":{"core":"bench"}},
     {"id":"chest1","name":"인클라인 덤벨프레스","part":"chest","aliases":"","is_machine":false,"status":"active","sort":1,"tier":{"head":"bench"}},
@@ -858,6 +859,10 @@ code{font-size:11px;background:var(--bg);padding:1px 4px;border-radius:4px}
     const t = {}; if (a[7]) t.core = a[7]; else { if (a[5]) t.head = a[5]; if (a[6] === 'barbell') { t.kind = 'barbell'; t.quest = 'trainer'; } }
     SEED.push({ id: a[0], name: a[2], part: a[1], aliases: a[4], is_machine: EQ_MACH.indexOf(EQN[a[3]]) >= 0, status: 'active', sort: 100 + SEED.length, tier: Object.keys(t).length ? t : null, eq: EQN[a[3]] });
   });
+  /* 유산소(심폐): 거리(또는 층)·시간 기준, 승급 줄 없음 */
+  [['cd1','달리기','러닝/런닝/조깅/트레드밀/런닝머신'],['cd2','천국의 계단','스텝밀/스테어마스터/계단 오르기/스텝퍼'],['cd3','자전거','사이클/실내자전거/바이크/싸이클']].forEach((a) => {
+    SEED.push({ id: a[0], name: a[1], part: 'cardio', aliases: a[2], is_machine: true, status: 'active', sort: 100 + SEED.length, tier: null, eq: 'machine' });
+  });
   const eqOf = (r) => r.eq || (r.meta && r.meta.eq) || EQ0[r.id] || ((r.is_machine != null ? r.is_machine : r.m) ? 'machine' : null);
   const alOf = (r) => { let a = r.aliases != null ? r.aliases : r.al || ''; const x = AL0[r.id]; if (x) x.split('/').forEach((w) => { if (a.split('/').indexOf(w) < 0 && a.indexOf(w) < 0) a = a ? a + '/' + w : w; }); return a; };
 
@@ -909,8 +914,8 @@ code{font-size:11px;background:var(--bg);padding:1px 4px;border-radius:4px}
 })(typeof window !== 'undefined' ? window : globalThis);
 
 /* ===== 앱 ===== */
-const P={chest:'가슴',back:'등',leg:'다리',shoulder:'어깨',arm:'팔',core:'코어'};
-const PC={chest:'#e5604a',back:'#2aa7c0',leg:'#d9aa4e',shoulder:'#9b7bf0',arm:'#3bb56a',core:'#e0559e'};
+const P={chest:'가슴',back:'등',leg:'다리',shoulder:'어깨',arm:'팔',core:'코어',cardio:'심폐'};
+const PC={chest:'#e5604a',back:'#2aa7c0',leg:'#d9aa4e',shoulder:'#9b7bf0',arm:'#3bb56a',core:'#e0559e',cardio:'#c0504d'};
 const BIG={chest:1,back:1,leg:1};
 const RAW={chest:'벤치프레스,인클라인 덤벨프레스,체스트 플라이,푸시업,케이블 크로스오버,딥스',
 back:'데드리프트,랫풀다운,바벨 로우,시티드 케이블 로우,풀업,원암 덤벨 로우',
@@ -1159,31 +1164,44 @@ const embImg=(t,sz)=>EMB[t]?`<img class="emi" src="${EMB[t]}" width="${sz||28}" 
 const TIERC=['#8b9099','#cf8a52','#9aa7b8','#e0a82e','#2bbfae','#2fbf73','#4f97f0','#b060f0','#f0506a','#e0b83a'];
 function rpCount(){let n=0;allDates().forEach(d=>{n+=[S.sessions[d]||[]].concat(S.more[d]||[]).filter(g=>g&&g.length).length});return n}
 function bestOf(x,mem){const g=gradeCalc(x,mem);if(!g.ok)return{ok:false,why:g.why};if(!g.rows.length)return{ok:false,why:'완료한 본 세트가 없어요'};const b=g.rows.slice().sort((a,c)=>c.e1-a.e1)[0];return{ok:true,t:b.t,w:b.w,r:b.r,e1:b.e1,txt:b.txt}}
-function reportHTML(sl){
-  const R=window.RuneTier,n=rpCount(),ats=[];sl.forEach(x=>x.sets.forEach(s=>{if(s.done&&s.at)ats.push(s.at)}));
-  const st0=(draft().st&&ats.length)?Math.min(draft().st,...ats):Math.min(...ats),dur=ats.length>1||(ats.length&&draft().st)?Math.max(1,Math.round((Math.max(...ats)-st0)/60000)):null;
+function reportHTML(sl,o){o=o||{};
+  const R=window.RuneTier,n=o.n!=null?o.n:rpCount(),ats=[],TD=o.date||T;sl.forEach(x=>x.sets.forEach(s=>{if(s.done&&s.at)ats.push(s.at)}));
+  const st0=o.tr?0:(draft().st&&ats.length)?Math.min(draft().st,...ats):Math.min(...ats),dur=o.tr?null:ats.length>1||(ats.length&&draft().st)?Math.max(1,Math.round((Math.max(...ats)-st0)/60000)):null;
   const tv=sl.reduce((a,x)=>a+vol(x.sets,x.id),0),ns=sl.reduce((a,x)=>a+x.sets.filter(q=>q.done&&q.t!=='W').length,0);
-  const wk=[];for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);const k=ymd(d);wk.push({w:'일월화수목금토'[d.getDay()],on:dayItems(k).length>0})}
+  const wk=[];for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);const k=ymd(d);wk.push({w:'일월화수목금토'[d.getDay()],on:o.days?o.days.has(k):dayItems(k).length>0})}
   const wn=wk.filter(x=>x.on).length;
-  const today=mileOf(sl),all=mileAll(),earn=MAX.filter(([k])=>k!=='cardio'&&today[k]>0).map(([k,nm])=>{const bf=all[k]-today[k];return{nm,add:today[k],got:Math.floor(all[k]/1000)-Math.floor(Math.max(0,bf)/1000),st:mStars(all[k],1000),tot:all[k]}});
-  let topT=-1;sl.forEach(x=>{const b=bestOf(x);if(b.ok&&b.t>topT)topT=b.t});
-  const rows=sl.map(x=>{const b=bestOf(x),nm=esc(EX[x.id]?EX[x.id].name:x.nm||'종목');return b.ok?`<div class="rpr"><span>${nm}<small>최고 세트 ${b.txt?b.txt+'kg':b.w+'kg×'+b.r} · 예상 1RM ${Math.round(b.e1)}kg</small></span><span class="emw">${embImg(b.t,36)}<b style="color:${TIERC[b.t]}">${R.TIERS[b.t]}</b></span></div>`:`<div class="rpr"><span>${nm}<small>${b.why}</small></span><b class="mu">-</b></div>`}).join('');
+  const today=mileOf(sl),all=o.all||mileAll(),earn=MAX.filter(([k])=>k!=='cardio'&&today[k]>0).map(([k,nm])=>{const bf=all[k]-today[k];return{nm,add:today[k],got:Math.floor(all[k]/1000)-Math.floor(Math.max(0,bf)/1000),st:mStars(all[k],1000),tot:all[k]}});
+  let topT=-1;sl.forEach(x=>{const b=bestOf(x,o.mem);if(b.ok&&b.t>topT)topT=b.t});
+  const rows=sl.map(x=>{const b=bestOf(x,o.mem),nm=esc(EX[x.id]?EX[x.id].name:x.nm||'종목');return b.ok?`<div class="rpr"><span>${nm}<small>최고 세트 ${b.txt?b.txt+'kg':b.w+'kg×'+b.r} · 예상 1RM ${Math.round(b.e1)}kg</small></span><span class="emw">${embImg(b.t,36)}<b style="color:${TIERC[b.t]}">${R.TIERS[b.t]}</b></span></div>`:`<div class="rpr"><span>${nm}<small>${b.why}</small></span><b class="mu">-</b></div>`}).join('');
   const cards=[
-   `<div class="rpc"><div class="rpt">좋아요!</div><div class="rps">이번이 ${n}번째 운동이에요</div><div class="rpw">${wk.map(x=>`<span><small>${x.w}</small><i class="${x.on?'on':''}">${x.on?'✓':''}</i></span>`).join('')}</div><div class="rps">지난 7일 동안 <b>${wn}번</b> 운동했어요</div></div>`,
-   `<div class="rpc"><div class="rpt">오늘의 운동</div><div class="rpg"><div><b>${dur==null?'-':dur+'분'}</b><span>운동 시간</span></div><div><b>${fmt(tv)} kg</b><span>볼륨</span></div><div><b>${sl.length}</b><span>운동</span></div><div><b>${ns}</b><span>세트</span></div></div><div class="rpl">${sl.map(x=>`<div><b>${x.sets.filter(q=>q.done&&q.t!=='W').length}x</b> ${esc(EX[x.id]?EX[x.id].name:x.nm||'종목')}</div>`).join('')}</div></div>`,
-   `<div class="rpc"><div class="rpt">오늘의 수행 티어</div>${topT>=0?`<div class="emh">${embImg(topT,92)}<b style="color:${TIERC[topT]}">오늘 최고 ${R.TIERS[topT]}</b></div>`:''}<div class="rps">종목마다 최고 세트의 예상 1RM을 내 체격 기준 티어로 환산했어요</div>${rows}</div>`,
+   `<div class="rpc"><div class="rpt">${o.tr?"수업 제출 완료!":"좋아요!"}</div><div class="rps">${o.tr?esc(o.who)+"님과 "+n+"번째 수업이에요":"이번이 "+n+"번째 운동이에요"}</div><div class="rpw">${wk.map(x=>`<span><small>${x.w}</small><i class="${x.on?'on':''}">${x.on?'✓':''}</i></span>`).join('')}</div><div class="rps">지난 7일 동안 <b>${wn}번</b> ${o.tr?"수업했어요":"운동했어요"}</div></div>`,
+   `<div class="rpc"><div class="rpt">${o.tr?"오늘의 수업":"오늘의 운동"}</div><div class="rpg"><div><b>${dur==null?'-':dur+'분'}</b><span>${o.tr?"수업":"운동"} 시간</span></div><div><b>${fmt(tv)} kg</b><span>볼륨</span></div><div><b>${sl.length}</b><span>운동</span></div><div><b>${ns}</b><span>세트</span></div></div><div class="rpl">${sl.map(x=>`<div><b>${x.sets.filter(q=>q.done&&q.t!=='W').length}x</b> ${esc(EX[x.id]?EX[x.id].name:x.nm||'종목')}</div>`).join('')}</div></div>`,
+   `<div class="rpc"><div class="rpt">오늘의 수행 티어</div>${topT>=0?`<div class="emh">${embImg(topT,92)}<b style="color:${TIERC[topT]}">오늘 최고 ${R.TIERS[topT]}</b></div>`:''}<div class="rps">종목마다 최고 세트의 예상 1RM을 ${o.tr?"회원":"내"} 체격 기준 티어로 환산했어요</div>${rows}</div>`,
    `<div class="rpc"><div class="rpt">숙련도 마일리지 적립</div><div class="rps"><span class="ms s">★</span> 1천 kg · <span class="ms y">★</span> 1만 kg · <span class="ms r">★</span> 10만 kg</div>${earn.length?earn.map(e=>`<div class="rpr"><span>${e.nm} <b>+${fmt(e.add)} kg</b><small>누적 ${fmt(e.tot)} kg${e.got?` · 은색별 ${e.got}개 적립`:` · 다음 별까지 ${fmt(1000-e.tot%1000)} kg`}</small></span><span>${mStarHTML(e.st)}</span></div>`).join(''):'<div class="mu">완료한 세트가 없어 적립된 볼륨이 없어요</div>'}</div>`];
-  const ev=[];try{tierRows().forEach(q=>{const R2=R,nm=esc(q.name),h=(q.hist||[]).slice(-1)[0],T2=q.p.tier+1,t=q.tr;
-    if(h&&h.d===T&&!h.start)ev.push(`<div class="rpr"><span>🎉 ${nm}<small><b>승급하셨습니다!</b> ${R2.TIERS[h.t]} 달성${h.auto?' · 최근 '+AUTO_W+'번 중 '+AUTO_N+'번 이상 이미 이 수준이라 바로 승급했어요':''}${q.gap?'<br><b style="color:#ff8a8a">'+esc(gapMsg(q.gap,q.name))+'</b>':''}</small></span><span class="emw">${embImg(h.t,36)}<b style="color:${TIERC[h.t]}">${R2.TIERS[h.t]}</b></span></div>`);
-    if(q.pend&&q.pend.d===T)ev.push(`<div class="rpr"><span>🏅 ${nm}<small>${R2.TIERS[q.pend.t]} 승급전 통과! 트레이너 확인 후 [승급 확정]을 누르면 승급돼요</small></span><b style="color:${TIERC[q.pend.t]}">확정 대기</b></div>`);
+  const ev=[];try{(o.rows||tierRows()).forEach(q=>{const R2=R,nm=esc(q.name),h=(q.hist||[]).slice(-1)[0],T2=q.p.tier+1,t=q.tr;
+    if(h&&h.d===TD&&!h.start)ev.push(`<div class="rpr"><span>🎉 ${nm}<small><b>승급하셨습니다!</b> ${R2.TIERS[h.t]} 달성${h.auto?' · 최근 '+AUTO_W+'번 중 '+AUTO_N+'번 이상 이미 이 수준이라 바로 승급했어요':''}${q.gap?'<br><b style="color:#ff8a8a">'+esc(gapMsg(q.gap,q.name))+'</b>':''}</small></span><span class="emw">${embImg(h.t,36)}<b style="color:${TIERC[h.t]}">${R2.TIERS[h.t]}</b></span></div>`);
+    if(q.pend&&q.pend.d===TD)ev.push(`<div class="rpr"><span>🏅 ${nm}<small>${R2.TIERS[q.pend.t]} 승급전 통과! 트레이너 확인 후 [승급 확정]을 누르면 승급돼요</small></span><b style="color:${TIERC[q.pend.t]}">확정 대기</b></div>`);
     if(!t)return;
-    if(t.win&&t.win.h.length&&t.win.h[t.win.h.length-1].d===T){const o=t.win,p=o.h[o.h.length-1].p,need=TRIAL_N-o.got,left=TRIAL_W-o.n;
+    if(t.win&&t.win.h.length&&t.win.h[t.win.h.length-1].d===TD){const o=t.win,p=o.h[o.h.length-1].p,need=TRIAL_N-o.got,left=TRIAL_W-o.n;
       ev.push(`<div class="rpr"><span>⚔ ${nm}<small>${p?'돌파! ':'이번 세션은 '+R2.TIERS[T2]+' 수준에 못 미쳤어요. '}<b>이제 ${need}세션만 더 돌파하시면 ${R2.TIERS[T2]} 승급이에요</b> (남은 기회 ${left}번)</small></span><b style="color:${TIERC[T2]}">${o.got}/${TRIAL_N}</b></div>`)}
-    else if(t.fail===T)ev.push(`<div class="rpr"><span>💤 ${nm}<small><b>퀘스트에 실패하셨습니다.</b> ${R2.TIERS[T2]} 수준 세트를 다시 해내면 새 퀘스트가 도착해요</small></span><b class="mu">실패</b></div>`);
-    else if(!t.win&&t.arr===T)ev.push(`<div class="rpr"><span>⚔ ${nm}<small><b>퀘스트 도착!</b> ${R2.TIERS[T2]} 승급전 · 수락 후 ${TRIAL_W}번의 운동 중 ${TRIAL_N}번 통과하면 승급</small><button class="btn sm" style="width:auto;margin-top:6px" data-act="qacc" data-k="${q.m.id}">퀘스트 수락</button></span><b style="color:${TIERC[T2]}">NEW</b></div>`)})}catch(e){}
+    else if(t.fail===TD)ev.push(`<div class="rpr"><span>💤 ${nm}<small><b>퀘스트에 실패하셨습니다.</b> ${R2.TIERS[T2]} 수준 세트를 다시 해내면 새 퀘스트가 도착해요</small></span><b class="mu">실패</b></div>`);
+    else if(!t.win&&t.arr===TD)ev.push(`<div class="rpr"><span>⚔ ${nm}<small><b>퀘스트 도착!</b> ${R2.TIERS[T2]} 승급전 · 수락 후 ${TRIAL_W}번의 운동 중 ${TRIAL_N}번 통과하면 승급</small>${o.tr?'':`<button class="btn sm" style="width:auto;margin-top:6px" data-act="qacc" data-k="${q.m.id}">퀘스트 수락</button>`}</span><b style="color:${TIERC[T2]}">NEW</b></div>`)})}catch(e){}
   if(ev.length)cards.push(`<div class="rpc"><div class="rpt">승급전 소식</div><div class="rps">종목별 티어 승급 상황이에요</div>${ev.join('')}</div>`);
-  return `<div class="row"><b class="h2">운동 성적표</b><button class="x" data-act="close">✕</button></div><div class="rpx" id="rpx">${cards.join('')}</div><div class="rpd" id="rpd">${cards.map((_,i)=>`<i class="${i?'':'on'}"></i>`).join('')}</div><div class="mu" style="text-align:center;margin:4px 0 8px">옆으로 넘겨 보세요</div><button class="btn ghost" data-act="grades">세트 평가 자세히 보기</button><button class="btn" style="margin-top:8px" data-act="close">완료</button>`;
+  return `<div class="row"><b class="h2">${o.tr?esc(o.who)+'님 수업 성적표':'운동 성적표'}</b><button class="x" data-act="close">✕</button></div><div class="rpx" id="rpx">${cards.join('')}</div><div class="rpd" id="rpd">${cards.map((_,i)=>`<i class="${i?'':'on'}"></i>`).join('')}</div><div class="mu" style="text-align:center;margin:4px 0 8px">옆으로 넘겨 보세요</div>${o.foot!=null?o.foot:`<button class="btn ghost" data-act="grades">세트 평가 자세히 보기</button><button class="btn" style="margin-top:8px" data-act="close">완료</button>`}`;
 }
+/* 트레이너: 수업 제출 시 회원 운동 종료 때 나오는 성적표와 같은 화면 (회원 체격·회원 기록 기준) */
+let TRN=null;
+function trReport(it){
+  try{const m=memOfIt(it);if(!m)return false;
+    const sl=(it.slots||[]).filter(x=>x&&EX[x.id]&&!EX[x.id].missing).map(x=>({id:x.id,sets:(x.sets||[]).map(q=>Object.assign({},q,{done:!!(q.done||(!q.tmp&&+q.r>0))}))})).filter(x=>x.sets.some(q=>q.done));
+    if(!sl.length)return false;
+    const ss=memSess(m),date=ADM.date||T,days=new Set(),n=Object.keys(ss).reduce((a,d)=>a+(d<=date?ss[d].filter(i=>i===it||submitted(i)).length:0),0);
+    Object.keys(ss).forEach(d=>{if(ss[d].some(i=>i===it||submitted(i)))days.add(d)});
+    const mem=memBody(m),items=memItems(m),all=mileOf(items,m.runs);
+    TRN=it.id;
+    const can=sendable(it);
+    openM(reportHTML(sl,{tr:1,who:m.name,n:Math.max(1,n),days,date,mem,all,rows:memRows(m),foot:(can?`<button class="btn" data-act="trnext">${S.autoSend&&sb&&UID?'확인 · 회원에게 발송':'다음 · 회원에게 발송하기'}</button><button class="btn ghost" style="margin-top:8px" data-act="close">발송은 나중에</button>`:`<button class="btn" data-act="close">완료</button>`)}));
+    return true}catch(e){console.error(e);return false}}
 document.addEventListener('scroll',e=>{const x=e.target;if(!x||x.id!=='rpx')return;const i=Math.round(x.scrollLeft/x.clientWidth);document.querySelectorAll('#rpd i').forEach((d,k)=>d.classList.toggle('on',k===i))},true);
 /* ---- 승급 이펙트 ---- */
 function promoHTML(ups){
@@ -1357,9 +1375,13 @@ const wTxt=s=>s.v?puV(s)[2]:s.w;
 const isDB=id=>{const e=EX[id];return !!(e&&e.eq==='dumbbell')};
 const dbSides=s=>s.lr?[{w:+s.w||0,r:+s.r||0},{w:+s.w2||0,r:+s.r2||0}]:[{w:+s.w||0,r:+s.r||0},{w:+s.w||0,r:+s.r||0}];
 const dbVol=s=>dbSides(s).reduce((a,q)=>a+q.w*q.r,0);
-const setTxt=s=>s.lr?`L${s.w}×${s.r}/R${s.w2}×${s.r2}`:wTxt(s)+'×'+s.r;
-const vol=(sets,id)=>{const d=id&&isDB(id);return sets.reduce((a,s)=>a+(s.done&&s.t!=='W'?(d?dbVol(s):(s.v?puKg(s):s.w)*s.r):0),0)};
-const pvol=(sets,id)=>{const d=id&&isDB(id);return sets.reduce((a,s)=>a+(s.t!=='W'?(d?dbVol(s):s.w*s.r):0),0)};
+const setTxt=s=>s.car?s.w+s.car+'·'+s.r+'분':s.lr?`L${s.w}×${s.r}/R${s.w2}×${s.r2}`:wTxt(s)+'×'+s.r;
+const isCar=id=>{const e=id&&EX[id];return !!(e&&e.part==='cardio')};
+const CAR_U={cd1:['km','분'],cd2:['층','분'],cd3:['km','분']};
+const carU=id=>CAR_U[id]||['km','분'];
+const carKm=(id,s)=>(+s.w||0)*(id==='cd2'?.003:1);
+const vol=(sets,id)=>{if(isCar(id))return sets.reduce((a,s)=>a+(s.done&&s.t!=='W'?carKm(id,s):0),0);const d=id&&isDB(id);return sets.reduce((a,s)=>a+(s.done&&s.t!=='W'?(d?dbVol(s):(s.v?puKg(s):s.w)*s.r):0),0)};
+const pvol=(sets,id)=>{if(isCar(id))return sets.reduce((a,s)=>a+(s.t!=='W'?carKm(id,s):0),0);const d=id&&isDB(id);return sets.reduce((a,s)=>a+(s.t!=='W'?(d?dbVol(s):s.w*s.r):0),0)};
 /* 덤벨 세트의 환산 합계 1RM: 약한 쪽 기준 ×2 */
 function dbE1(s){const R=window.RuneTier;let m=null;for(const q of dbSides(s)){if(!(q.w>0)||!(q.r>=1)||q.r>20)return null;const e=q.w/R.rmPct(q.r);m=m==null?e:Math.min(m,e)}return m==null?null:m*2}
 /* 덤벨 종목 기준표: 바벨 헤드 기준표 × 환산비(총무게). 런지·체스트 플라이는 자체 기준표 사용 */
@@ -1392,8 +1414,15 @@ function planFor(id){
   const pl=RR.plan(shownMode(),e1,{step:2.5,age:mem.age});if(!pl)return null;
   return[{t:'W',w:rnd(pl.sets[0].w/2),r:5,done:false,tmp:1}].concat(pl.sets.map(s=>({t:'M',w:s.w,r:s.r,pr:s.pr,done:false,tmp:1})));
 }
-function mkSets(id){
+/* 지난번 웜업 습관 이어받기: 지난 기록의 웜업/첫 본세트 비율을 오늘 첫 본세트 무게에 곱해요 (값은 흐리게 제안, 직접 고치거나 체크하면 확정) */
+function mkSets(id){const a=mkSets0(id);try{if(isCar(id)||ADM.cur)return a;const pv=prevOf(id);if(!pv)return a;
+  const pw=pv.sets.find(q=>q.t==='W'&&+q.w>0&&(q.done||!q.tmp)),pm=pv.sets.find(q=>q.t==='M'&&+q.w>0);
+  const w0=a.find(q=>q.t==='W'),m0=a.find(q=>q.t==='M');
+  if(pw&&pm&&w0&&m0&&!w0.lr&&!pw.lr){w0.w=Math.abs(m0.w-pm.w)/pm.w<=.15?+pw.w:rnd(m0.w*(+pw.w/+pm.w));if(+pw.r>0)w0.r=+pw.r}}catch(e){}
+  return a}
+function mkSets0(id){
   if(!ADM.cur){try{const p=planFor(id);if(p)return p}catch(e){console.error(e)}}
+  if(isCar(id))return [{t:'M',w:id==='cd2'?10:id==='cd3'?5:2,r:id==='cd2'?10:20,done:false,tmp:1,car:carU(id)[0]}];
   const c=LV.intermediate,per=c.v/c.n,big=BIG[EX[id].part];
   const r=big?10:20,w=rnd(big?per/10:per/10/2);
   return [{t:'W',w:rnd(w/2),r,done:false,tmp:1},{t:'M',w,r,done:false,tmp:1},{t:'M',w,r,done:false,tmp:1}];
@@ -1417,7 +1446,7 @@ function prevOf(id){
 }
 function partVol(from,to){
   const o={chest:0,back:0,leg:0,shoulder:0,arm:0,core:0};
-  allDates().forEach(d=>{if(d>=from&&d<=to)dayItems(d).forEach(x=>{o[EX[x.id].part]+=vol(x.sets,x.id)})});
+  allDates().forEach(d=>{if(d>=from&&d<=to)dayItems(d).forEach(x=>{const pt=EX[x.id].part;if(pt in o)o[pt]+=vol(x.sets,x.id)})});
   return o;
 }
 const dAgo=n=>{const d=new Date();d.setDate(d.getDate()-n);return ymd(d)};
@@ -1430,9 +1459,9 @@ function putToday(items){const n=curNo(),c=JSON.parse(JSON.stringify(items));if(
 const dayVol=d=>dayItems(d).reduce((a,x)=>a+vol(x.sets,x.id),0);
 
 /* ---- 룬 라인업 보드: 월드맵(숲=전체 라인업) · 미니맵(나무=오늘 산책로). 6칸 슬롯은 폐지, 옛 기록은 그대로 두고 순서대로 길이 돼요 ---- */
-const PHS={early:{t:'입문',ax:['신경계·호흡·코어','하지 움직임','상지 움직임'],cl:['#e0559e','#d9aa4e','#2aa7c0']},
- mid:{t:'적응',ax:['코어','심폐','당기기','밀기','하지'],cl:['#e0559e','#e5604a','#2aa7c0','#9b7bf0','#d9aa4e']},
- late:{t:'발전',ax:['등','가슴','다리','코어','어깨','팔','심폐'],cl:['#2aa7c0','#e5604a','#d9aa4e','#e0559e','#9b7bf0','#3bb56a','#c0504d']}};
+const PHS={early:{t:'Basic',k:'B',ax:['신경계·호흡·코어','하지 움직임','상지 움직임'],cl:['#e0559e','#d9aa4e','#2aa7c0']},
+ mid:{t:'Intermediate',k:'I',ax:['코어','심폐','당기기','밀기','하지'],cl:['#e0559e','#e5604a','#2aa7c0','#9b7bf0','#d9aa4e']},
+ late:{t:'Advanced',k:'A',ax:['등','가슴','다리','코어','어깨','팔','심폐'],cl:['#2aa7c0','#e5604a','#d9aa4e','#e0559e','#9b7bf0','#3bb56a','#c0504d']}};
 const FG={3:[36,57],5:[36,53],7:[37,51]};
 const fMax=()=>(ADM.cur||ROLE==='trainer')?12:8;
 const fLv=n=>n>=8?3:n>=6?2:n>=4?1:0;
@@ -1440,6 +1469,7 @@ function fLvInfo(n){const l=fLv(n);if(!l)return null;const mx=fMax();
   if(l<3)return{c:l===1?'yel':'org',t:l===1?'4개 이상 · 오늘 운동이 많아지고 있어요':'6개 이상 · 기억하기 어려운 양이에요'};
   return{c:'red',t:!ADM.cur&&mx===8?'8개 · 최대치예요. 더 추가할 수 없어요':(n>=mx?'트레이너 최대치('+mx+'개)예요':'회원 한도(8개)'+(n>8?'를 넘었어요':'예요')+' · 트레이너만 최대 '+mx+'개')}}
 function fxIdx(e,ph){const p=e.part,nm=e.name||'';
+  if(p==='cardio')return ph==='early'?0:ph==='mid'?1:6;
   if(ph==='early')return p==='core'?0:p==='leg'?1:2;
   if(ph==='mid'){if(p==='core')return 0;if(p==='leg')return 4;if(p==='back')return 2;if(p==='chest')return 3;if(p==='shoulder')return /페이스|리어|리버스|슈러그/.test(nm)?2:3;return /컬/.test(nm)?2:3}
   return {back:0,chest:1,leg:2,core:3,shoulder:4,arm:5}[p]}
@@ -1450,7 +1480,13 @@ function fSpot(n,ph,id,taken){const ix=fxIdx(EX[id],ph),g=FG[n],half=180/n;let b
   for(const k of [.62,.78,.46,.9,.3])for(const da of [0,-.45,.45,-.8,.8]){const a=(-90+ix*360/n+da*half)*Math.PI/180,x=50+g[0]*k*Math.cos(a),y=g[1]+g[0]*k*Math.sin(a);
     if(!fIn(n,x,y,.92))continue;const d=Math.min(99,...taken.map(t=>Math.hypot(x-t.x,(y-t.y)*1.1)));if(d>=14)return{x,y};if(d>bd){bd=d;best={x,y}}}
   return best||{x:50,y:g[1]}}
-let LUM=null,ML={ph:'late',conf:''};
+/* 위상: 한 종목이 세 레이더(Basic·Intermediate·Advanced)에서 어느 축에 놓이는지 — 시스템이 자동 분류 */
+function fPos(id){const e=EX[id];if(!e)return[];return Object.keys(PHS).map(ph=>{const ix=fxIdx(e,ph),P0=PHS[ph];return{ph,t:P0.t,n:P0.ax.length,ix,ax:ix>=0?P0.ax[ix]:'',c:ix>=0?P0.cl[ix]:'var(--mu)'}})}
+function posCard(id){const ps=fPos(id);if(!ps.length)return '';
+  const mini=p=>{const n=p.n,pts=[...Array(n)].map((_,i)=>fVert(n,i,1)),cy=FG[n][1];
+    return `<svg viewBox="8 0 84 100" width="52" height="52" aria-hidden="true"><polygon points="${pts.map(v=>v.join(',')).join(' ')}" fill="rgba(42,167,192,.08)" stroke="var(--ln)" stroke-width="1.4"/>${pts.map(v=>`<line x1="50" y1="${cy}" x2="${v[0]}" y2="${v[1]}" stroke="var(--ln)" stroke-width="1"/>`).join('')}${p.ix>=0?`<circle cx="${pts[p.ix][0]}" cy="${pts[p.ix][1]}" r="9" fill="${p.c}"/><line x1="50" y1="${cy}" x2="${pts[p.ix][0]}" y2="${pts[p.ix][1]}" stroke="${p.c}" stroke-width="3"/>`:''}</svg>`};
+  return `<div class="pn" style="padding:8px 10px;margin:8px 0"><div class="mu" style="font-size:11px;margin-bottom:4px">🌲 이 운동은 숲의 어디쯤? <small>(자동 분류)</small></div><div style="display:flex;gap:6px;justify-content:space-between">${ps.map(p=>`<div style="flex:1;text-align:center;min-width:0">${mini(p)}<div style="font-size:10px;color:var(--mu)">${p.t}</div><div style="font-size:11px;font-weight:700;color:${p.c};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.ax||'—'}</div></div>`).join('')}</div></div>`}
+let LUM=null,ML={ph:'late',conf:''},SIMM=null;
 function luObj(){let o;
   if(LUM)o=AD().members.find(x=>x.id===LUM);
   if(!o&&ADM.cur){const c=ADM.cur,m=c.mid&&AD().members.find(x=>x.id===c.mid);if(m)o=m;else{S.lu=S.lu||{};const k='n:'+(c.name||'');o=S.lu[k]=S.lu[k]||{}}}
@@ -1475,11 +1511,11 @@ function fieldBlock(d){
   const lvi=fLvInfo(route.length);
   const who=ADM.cur?'수업 라인업':'내 라인업';
   const empty=!toks.length?`<div class="mu" style="position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:0 22%">${world?'라인업이 비어 있어요. “+ 운동 올리기”로 종목을 올려 보세요':'오늘 산책로가 비어 있어요. “+ 운동 담기”로 첫 운동을 고르세요'}</div>`:'';
-  const HEAD=`<div class="pn"><div class="row"><div class="h2">${world?(ADM.cur?'라인업 편집 · 월드맵':'내 라인업 · 월드맵'):(ADM.cur?'오늘 수업':'오늘 운동')}</div><span class="mu">${P0.t} 과정 · ${route.length}/${fMax()}</span></div>`,SEGM=`<div class="fseg" role="group" aria-label="지도 보기"><button class="${world?'':'on'}" data-act="fmode" data-v="mini">미니맵 · 오늘 산책로</button><button class="${world?'on':''}" data-act="fmode" data-v="world">월드맵 · 전체 라인업</button></div>`,SEGP=`<div class="fseg" role="group" aria-label="과정"><span class="mu" style="align-self:center">과정</span>${Object.keys(PHS).map(k=>`<button class="${ph===k?'on':''}" data-act="fphase" data-v="${k}">${PHS[k].t}</button>`).join('')}</div>`,FLD=`<div class="fld${ed?' ed':''}" id="fld"><svg viewBox="0 0 100 100" aria-hidden="true"><defs><marker id="fam" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path d="M0 0L10 5L0 10z" fill="#c26a00"/></marker></defs>${rings}${spokes}${arrows}</svg>${labs}${tk}${empty}</div>`,BTN=`<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:10px">${world?`<button class="btn ghost sm" data-act="fadd" data-lu="1">+ 운동 올리기</button><button class="btn ghost sm" data-act="fedit">${FE?'편집 끝내기':'배치 편집'}</button>`:`<button class="btn sm" data-act="fadd">+ 운동 담기</button>`}${world&&FE&&FSEL&&pos[FSEL]?`<button class="btn ghost sm" data-act="frm" data-id="${FSEL}">라인업에서 제외</button>`:''}</div>`,INP=`<input type="search" id="fq" placeholder="${world?'운동 검색해서 라인업에 올리기':'운동 검색해서 오늘 산책로에 담기'} (예: 벤치)" value="${esc(FQ)}" autocomplete="off" style="width:100%;margin-top:8px;box-sizing:border-box">`,NOTE=`${world?`<div class="mu" style="margin-top:6px">${FE?'룬을 끌어서 위치를 옮겨요. ':''}${FE?'':'룬을 누르면 오늘 산책로에 담기고, 다시 누르면 빠져요.'}</div>`:''}`,WARN=`${lvi?`<div class="wb ${lvi.c}" role="${lvi.c==='red'?'alert':'status'}"><i aria-hidden="true">!</i>${route.length}/${fMax()} · ${lvi.t}</div>`:''}`,RT=`${route.length?`<div class="h2" style="margin-top:10px;font-size:14px">${ADM.cur?'오늘 수업':'오늘 운동'} 산책로 · 눌러서 기록</div><div class="mu" style="margin:2px 0 4px">왼쪽 ⠿ 를 잡고 끌어서 순서를 바꿔요. ✕ 는 운동 삭제예요.</div><div class="frl" id="frl">${route.map((r,q)=>{const dn=r.x.sets.some(s=>s.done),ask=RMC===r.i;return `<div class="frow${ask?' ask':''}" data-q="${q}"><span class="fgh" role="button" aria-label="순서 바꾸기" title="끌어서 순서 바꾸기">⠿</span><button class="ex" style="flex:1;min-width:0" data-act="slot" data-i="${r.i}"><span style="min-width:0"><b class="n">${q+1}</b>${esc(EX[r.x.id].name)}${exEmb(r.x,ADM.cur&&ADM.cur.mid?AD().members.find(z=>z.id===ADM.cur.mid):null,20)}${ADM.cur?'':(l=>l==='on'?'<span class="tqi">⚔ 승급전 진행 중</span>':l==='quest'?'<span class="tqi">⚔ 퀘스트 도착</span>':'')(FTI.lines[lineOf(EX[r.x.id])])}</span><span class="mu">${r.x.sets.filter(s=>s.done&&s.t!=='W').length}/${r.x.sets.filter(s=>s.t!=='W').length}세트 · ${P[EX[r.x.id].part]||''}</span></button>${ask?`<button class="btn sm" style="background:#d8372a;border-color:#d8372a;white-space:nowrap" data-act="rmx" data-i="${r.i}">기록까지 삭제</button><button class="btn ghost sm" data-act="rmc">취소</button>`:`<button class="fdx" data-act="rmx" data-i="${r.i}" aria-label="${esc(EX[r.x.id].name)} 삭제" title="이 운동 삭제">✕</button>`}</div>`}).join('')}</div>`:''}`;
+  const HEAD=`<div class="pn"><div class="row"><div class="h2">${world?(ADM.cur?'라인업 편집 · 월드맵':'내 라인업 · 월드맵'):(ADM.cur?'오늘 수업':'오늘 운동')}</div><span class="mu">${P0.t} 레이더 · ${route.length}/${fMax()}</span></div>`,SEGM=`<div class="fseg" role="group" aria-label="지도 보기"><button class="${world?'':'on'}" data-act="fmode" data-v="mini">미니맵 · 오늘 산책로</button><button class="${world?'on':''}" data-act="fmode" data-v="world">월드맵 · 전체 라인업</button></div>`,SEGP=`<div class="fseg" role="group" aria-label="레이더"><span class="mu" style="align-self:center">레이더</span>${Object.keys(PHS).map(k=>`<button class="${ph===k?'on':''}" data-act="fphase" data-v="${k}">${PHS[k].t}</button>`).join('')}</div>`,FLD=`<div class="fld${ed?' ed':''}" id="fld"><svg viewBox="0 0 100 100" aria-hidden="true"><defs><marker id="fam" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path d="M0 0L10 5L0 10z" fill="#c26a00"/></marker></defs>${rings}${spokes}${arrows}</svg>${labs}${tk}${empty}</div>`,BTN=`<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:10px">${world?`<button class="btn ghost sm" data-act="fadd" data-lu="1">+ 운동 올리기</button><button class="btn ghost sm" data-act="fedit">${FE?'편집 끝내기':'배치 편집'}</button>`:`<button class="btn sm" data-act="fadd">+ 운동 담기</button>`}${world&&FE&&FSEL&&pos[FSEL]?`<button class="btn ghost sm" data-act="frm" data-id="${FSEL}">라인업에서 제외</button>`:''}</div>`,INP=`<input type="search" id="fq" placeholder="${world?'운동 검색해서 라인업에 올리기':'운동 검색해서 오늘 산책로에 담기'} (예: 벤치)" value="${esc(FQ)}" autocomplete="off" style="width:100%;margin-top:8px;box-sizing:border-box">`,NOTE=`${world?`<div class="mu" style="margin-top:6px">${FE?'룬을 끌어서 위치를 옮겨요. ':''}${FE?'':'룬을 누르면 오늘 산책로에 담기고, 다시 누르면 빠져요.'}</div>`:''}`,WARN=`${lvi?`<div class="wb ${lvi.c}" role="${lvi.c==='red'?'alert':'status'}"><i aria-hidden="true">!</i>${route.length}/${fMax()} · ${lvi.t}</div>`:''}`,RT=`${route.length?`<div class="h2" style="margin-top:10px;font-size:14px">${ADM.cur?'오늘 수업':'오늘 운동'} 산책로 · 눌러서 기록</div><div class="mu" style="margin:2px 0 4px">왼쪽 ⠿ 를 잡고 끌어서 순서를 바꿔요. ✕ 는 운동 삭제예요.</div><div class="frl" id="frl">${route.map((r,q)=>{const dn=r.x.sets.some(s=>s.done),ask=RMC===r.i;return `<div class="frow${ask?' ask':''}" data-q="${q}"><span class="fgh" role="button" aria-label="순서 바꾸기" title="끌어서 순서 바꾸기">⠿</span><button class="ex" style="flex:1;min-width:0" data-act="slot" data-i="${r.i}"><span style="min-width:0"><b class="n">${q+1}</b>${esc(EX[r.x.id].name)}${exEmb(r.x,ADM.cur&&ADM.cur.mid?AD().members.find(z=>z.id===ADM.cur.mid):null,20)}${ADM.cur?'':(l=>l==='on'?'<span class="tqi">⚔ 승급전 진행 중</span>':l==='quest'?'<span class="tqi">⚔ 퀘스트 도착</span>':'')(FTI.lines[lineOf(EX[r.x.id])])}</span><span class="mu">${r.x.sets.filter(s=>s.done&&s.t!=='W').length}/${r.x.sets.filter(s=>s.t!=='W').length}세트 · ${P[EX[r.x.id].part]||''}</span></button>${ask?`<button class="btn sm" style="background:#d8372a;border-color:#d8372a;white-space:nowrap" data-act="rmx" data-i="${r.i}">기록까지 삭제</button><button class="btn ghost sm" data-act="rmc">취소</button>`:`<button class="fdx" data-act="rmx" data-i="${r.i}" aria-label="${esc(EX[r.x.id].name)} 삭제" title="이 운동 삭제">✕</button>`}</div>`}).join('')}</div>`:''}`;
   if(world)return HEAD+SEGM+SEGP+FLD+BTN+INP+'<div id="fqr">'+fqHTML(d)+'</div>'+NOTE+WARN+RT+'</div>';
   /* 개인/수업 기록: 담기·검색 → 운동 순서 → 최근 운동 → 맨 아래 미니맵 */
   const sq=FQ.trim()?fqHTML(d):'',rc=FQ.trim()?'':fqHTML(d);
-  return HEAD+BTN+INP+'<div id="fqr">'+sq+'</div>'+WARN+RT+'<div id="fqrec">'+rc+'</div>'+'<details open style="margin-top:14px"><summary class="h2" style="font-size:14px;cursor:pointer">🗺 미니맵 · 오늘 산책로 분포</summary>'+SEGM+SEGP+FLD+'</details></div>'}
+  return HEAD+BTN+INP+'<div id="fqr">'+sq+'</div>'+WARN+RT+'<div id="fqrec">'+rc+'</div>'+`<details${ADM.cur?' open':''} style="margin-top:14px"><summary class="h2" style="font-size:14px;cursor:pointer">🗺 ${ADM.cur?'미니맵 · 오늘 산책로 분포':'숲 지도 보기 <small class="mu">(선택) · '+P0.t+' 레이더 '+new Set(route.map(r=>fxIdx(EX[r.x.id],ph))).size+'/'+n+'영역</small>'}</summary>`+SEGM+SEGP+FLD+'</details></div>'}
 /* ---- 회원 월드맵 관리창 ---- */
 function fCore(o,ph,sel){
   const P0=PHS[ph],n=P0.ax.length,lu=o.lu[ph];
@@ -1501,19 +1537,19 @@ function mapHTML(){
   const ask=(k,label,warn)=>conf===k?`<div class="wb red" role="alert" style="display:block"><b>${warn}</b><div style="display:flex;gap:6px;margin-top:6px"><button class="btn sm" style="background:#d8372a;border-color:#d8372a" data-act="mpcf" data-k="${k}">네, 진행해요</button><button class="btn ghost sm" data-act="mpcf" data-k="">취소</button></div></div>`:`<button class="btn ghost sm" data-act="mpcf" data-k="${k}">${label}</button>`;
   const others=Object.keys(PHS).filter(k=>k!==ph&&o.lu[k].length),hist=mHist(m);
   return `<div class="row"><b class="h2">${esc(m.name)} · 월드맵</b><div style="display:flex;gap:6px"><button class="btn ghost sm" data-act="minfo" data-id="${m.id}">◀ 회원정보</button><button class="x" data-act="mclose" aria-label="닫기">✕</button></div></div>
-  <div class="mu" style="margin:4px 0 8px;line-height:1.6">회원의 전체 라인업을 과정별로 따로 저장해요. 수업 때는 여기 올려 둔 종목 중에서 오늘 산책로를 골라요.</div>
+  <div class="mu" style="margin:4px 0 8px;line-height:1.6">회원의 전체 라인업을 레이더(Basic·Intermediate·Advanced)별로 따로 저장해요. 수업 때는 여기 올려 둔 종목 중에서 오늘 산책로를 골라요.</div>
   <div class="mphs">${Object.keys(PHS).map(k=>miniPoly(o,k,k===ph,k===cur)).join('')}</div>
-  <div class="row" style="margin:8px 0 4px"><b>${PHS[ph].t} 과정 · ${lu.length}개</b>${ph===cur?'<span class="mu">현재 과정</span>':`<button class="btn ghost sm" data-act="mcur">현재 과정으로 설정</button>`}</div>
+  <div class="row" style="margin:8px 0 4px"><b>${PHS[ph].t} 레이더 · ${lu.length}개</b>${ph===cur?'<span class="mu">현재 레이더</span>':`<button class="btn ghost sm" data-act="mcur">현재 레이더로 설정</button>`}</div>
   ${fCore(o,ph,FSEL)}
   <div class="mu" style="margin:6px 0">룬을 끌어서 위치를 옮겨요 (방향키로 미세 이동).</div>
   <div style="display:flex;gap:6px;align-items:center"><button class="btn sm" style="white-space:nowrap" data-act="fadd" data-lu="1">+ 운동 올리기</button><input type="search" id="mq" placeholder="운동 검색 (예: 벤치, 풀오버)" value="${esc(MQ)}" autocomplete="off" style="flex:1;min-width:0"></div>
   <div id="mqr">${mqHTML()}</div>
   <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${FSEL&&lu.some(t=>t.id===FSEL)?`<button class="btn ghost sm" data-act="frm" data-id="${FSEL}">선택한 운동 제외</button>`:''}</div>
   <div class="pn" style="margin-top:12px"><div class="h2">데이터 관리</div>
-   <div class="mu" style="margin:4px 0 8px">지금 보는 <b>${PHS[ph].t}</b> 과정 기준이에요. 다른 과정은 건드리지 않아요.</div>
+   <div class="mu" style="margin:4px 0 8px">지금 보는 <b>${PHS[ph].t}</b> 레이더 기준이에요. 다른 레이더는 건드리지 않아요.</div>
    <div style="display:flex;gap:6px;flex-wrap:wrap">${others.map(k=>`<button class="btn ghost sm" data-act="mcopy" data-from="${k}">${PHS[k].t} 라인업 가져오기</button>`).join('')}<button class="btn ghost sm" data-act="mfill"${hist.length?'':' disabled'}>수업 기록으로 채우기${hist.length?' ('+hist.length+'종목)':''}</button></div>
-   <div style="margin-top:8px">${ask('clr','이 과정 비우기','이 과정 라인업을 모두 비울까요? 수업 기록은 그대로 남아요.')}</div>
-   <div style="margin-top:6px">${ask('clrall','모든 과정 초기화','세 과정 라인업을 모두 지울까요? 수업 기록과 회원 정보는 그대로예요.')}</div>
+   <div style="margin-top:8px">${ask('clr','이 레이더 비우기','이 레이더 라인업을 모두 비울까요? 수업 기록은 그대로 남아요.')}</div>
+   <div style="margin-top:6px">${ask('clrall','모든 레이더 초기화','세 레이더 라인업을 모두 지울까요? 수업 기록과 회원 정보는 그대로예요.')}</div>
    <div class="h2" style="margin-top:12px;font-size:14px">올려 둔 종목 (${lu.length})</div>
    ${lu.length?lu.map(t=>{const e=EX[t.id];return e?`<div class="row" style="padding:4px 0;border-bottom:1px solid var(--ln)"><span><b style="color:${PC[e.part]}">${P[e.part]}</b> ${esc(e.name)} <span class="mu">· ${PHS[ph].ax[fxIdx(e,ph)]||''}</span></span><button class="btn ghost sm" data-act="mrmtok" data-id="${t.id}">제외</button></div>`:''}).join(''):'<div class="mu">아직 없어요</div>'}
   </div>`}
@@ -1614,7 +1650,7 @@ function viewCal(){
   return `<h1 class="h1">캘린더조회</h1><div class="pn"><div class="row"><button class="x" data-act="mon" data-v="-1">◀</button><b class="h2">${y}년 ${m+1}월</b><button class="x" data-act="mon" data-v="1">▶</button></div><div class="cal" style="margin-top:8px">${cells}</div></div>
   <div class="pn"><div class="row"><b class="h2" style="display:flex;align-items:center;gap:8px">${CD}${(t=>t>=0?embImg(t,30):'')(dayTop(CD))}</b><span class="vb"><b style="font-size:16px">${fmt(dayVol(CD))}</b> kg</span></div>${revCal()}${det}${Object.keys(TI.dates).length?'<div class="mu" style="margin-top:8px">⚔ = 승급전에 포함된 운동이에요</div>':''}</div>`;
 }
-function radar(a,b){
+function radar(a,b,la,lb){
   const cx=130,cy=115,R=82,ang={back:-120,chest:-60,core:0,shoulder:60,arm:120,leg:180};
   const mx=Math.max(1,...Object.values(a),...Object.values(b));
   const pt=(k,f)=>{const t=ang[k]*Math.PI/180;return[cx+R*f*Math.cos(t),cy+R*f*Math.sin(t)]};
@@ -1622,9 +1658,172 @@ function radar(a,b){
   const grid=[.25,.5,.75,1].map(f=>`<polygon points="${Object.keys(ang).map(k=>pt(k,f).join(',')).join(' ')}" fill="none" stroke="var(--ln)"/>`).join('');
   const lab=Object.keys(ang).map(k=>{const[x,y]=pt(k,1.2);return`<text x="${x}" y="${y+4}" text-anchor="middle" font-size="12" font-weight="700" fill="var(--mu)">${P[k]}</text>`}).join('');
   return `<svg viewBox="0 0 260 230" width="100%" role="img" aria-label="부위별 볼륨 육각형 그래프">${grid}${poly(b,'#8a98a8','rgba(138,152,168,.2)')}${poly(a,'#2aa7c0','rgba(42,167,192,.35)')}${lab}</svg>
-  <div class="mu" style="text-align:center"><span style="color:#2aa7c0">●</span> 최근 30일 &nbsp; <span style="color:#8a98a8">●</span> 이전 30일</div>`;
+  <div class="mu" style="text-align:center"><span style="color:#2aa7c0">●</span> ${la||'최근 30일'} &nbsp; <span style="color:#8a98a8">●</span> ${lb||'이전 30일'}</div>`;
+}
+
+/* ===== 고급 통계 (Hevy 기능 이식): 기간별 추이 · 근육 그룹 세트 수 · 분포 · 신체 히트맵 · 주요 운동 · 월간 리포트 · 종목별 분석 · 측정 ===== */
+const ST={p:'3m',m:'dur',v:'',ex:'',exm:'w',mo:'',bm:'kg'};
+const PKS=['chest','back','leg','shoulder','arm','core'];
+const PERIODS=[['1w','1주'],['1m','1개월'],['3m','3개월'],['1y','1년'],['all','전체']];
+const stRe=()=>{const y=window.scrollY;render();window.scrollTo(0,y)};
+const doneSets=x=>(x.sets||[]).filter(s=>s.done&&s.t!=='W');
+const e1of=(w,r)=>{w=+w;r=+r;if(!(w>0)||!(r>=1))return 0;if(r===1)return w;const R=window.RuneTier;return r<=20&&R&&R.rmPct?w/R.rmPct(r):w*(1+r/30)};
+const mdl=d=>(+d.slice(5,7))+'/'+(+d.slice(8,10));
+function stDates(from,to){return allDates().filter(d=>d>=from&&d<=to).sort()}
+function stRange(p){
+  let from;
+  if(p==='1w')from=dAgo(6);else if(p==='1m')from=dAgo(29);else if(p==='3m')from=dAgo(90);else if(p==='1y')from=dAgo(364);
+  else{const ds=allDates().sort();from=ds[0]||T}
+  const n=Math.max(1,dayDiff(from,T)+1);
+  return{from,to:T,n,pf:addDays(from,-n),pt:addDays(from,-1)}
+}
+function addDays(d,n){const x=new Date(d+'T00:00:00');x.setDate(x.getDate()+n);return ymd(x)}
+function dayDur(d){
+  let m=0;[S.sessions[d]||[]].concat(S.more[d]||[]).forEach(g=>{const a=[];(g||[]).filter(Boolean).forEach(x=>(x.sets||[]).forEach(s=>{if(s.done&&s.at)a.push(s.at)}));if(a.length>1)m+=Math.min(300,Math.round((Math.max(...a)-Math.min(...a))/60000))});
+  return m}
+function dayReps(d){return dayItems(d).reduce((a,x)=>a+(EX[x.id]&&EX[x.id].part!=='cardio'?doneSets(x).reduce((b,s)=>b+(+s.r||0),0):0),0)}
+function daySets(d){return dayItems(d).reduce((a,x)=>a+(EX[x.id]&&EX[x.id].part!=='cardio'?doneSets(x).length:0),0)}
+function stBuckets(p){
+  const r=stRange(p),unit=p==='1w'||p==='1m'?'d':p==='3m'?'w':'m',keys=[],map={};
+  const key=d=>{if(unit==='d')return d;if(unit==='m')return d.slice(0,7);const x=new Date(d+'T00:00:00'),k=(x.getDay()+6)%7;x.setDate(x.getDate()-k);return ymd(x)};
+  for(let d=r.from;d<=r.to;d=addDays(d,1)){const k=key(d);if(!map[k]){map[k]={k,dur:0,vol:0,rep:0,set:0,days:0};keys.push(k)}}
+  stDates(r.from,r.to).forEach(d=>{const b=map[key(d)];if(!b)return;b.dur+=dayDur(d);b.vol+=dayVol(d);b.rep+=dayReps(d);b.set+=daySets(d);if(dayItems(d).length)b.days++});
+  return{unit,list:keys.map(k=>map[k]),r}
+}
+const niceMax=v=>{if(v<=0)return 1;const e=Math.pow(10,Math.floor(Math.log10(v))),f=v/e;return(f<=1?1:f<=2?2:f<=4?4:f<=6?6:f<=8?8:10)*e};
+function barChart(vals,labs,fmtY,color){
+  const W=320,H=170,L=40,B=20,T0=8,mx=niceMax(Math.max(...vals,0)),n=vals.length,bw=(W-L-6)/n;
+  const grid=[0,1,2].map(i=>{const y=T0+(H-B-T0)*(1-i/2);return`<line x1="${L}" x2="${W}" y1="${y}" y2="${y}" stroke="var(--ln)" stroke-width="1"/><text x="${L-4}" y="${y+4}" text-anchor="end" font-size="10" fill="var(--mu)">${fmtY(mx*i/2)}</text>`}).join('');
+  const bars=vals.map((v,i)=>{const h=(H-B-T0)*(v/mx),x=L+i*bw+bw*.12;return`<rect x="${x.toFixed(1)}" y="${(H-B-h).toFixed(1)}" width="${(bw*.76).toFixed(1)}" height="${Math.max(0,h).toFixed(1)}" rx="2" fill="${color||'var(--cy)'}"/>`}).join('');
+  const step=Math.ceil(n/6),tl=labs.map((t,i)=>i%step===0?`<text x="${(L+i*bw+bw/2).toFixed(1)}" y="${H-5}" text-anchor="middle" font-size="10" fill="var(--mu)">${t}</text>`:'').join('');
+  return`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="기간별 막대 그래프">${grid}${bars}${tl}</svg>`
+}
+function lineChart(pts,fmtY,color){
+  /* pts: [{x:label,y:number}] */
+  const W=320,H=170,L=44,B=20,T0=10;if(!pts.length)return '<div class="mu">기록이 없어요</div>';
+  let lo=Math.min(...pts.map(p=>p.y)),hi=Math.max(...pts.map(p=>p.y));if(hi===lo){hi+=1;lo-=1}const pad=(hi-lo)*.12;lo-=pad;hi+=pad;
+  const X=i=>pts.length===1?(L+W-6)/2:L+(W-L-8)*i/(pts.length-1),Y=v=>T0+(H-B-T0)*(1-(v-lo)/(hi-lo));
+  const grid=[0,1,2].map(i=>{const v=lo+(hi-lo)*i/2,y=Y(v);return`<line x1="${L}" x2="${W}" y1="${y}" y2="${y}" stroke="var(--ln)"/><text x="${L-4}" y="${y+4}" text-anchor="end" font-size="10" fill="var(--mu)">${fmtY(v)}</text>`}).join('');
+  const c=color||'var(--cy)',line=`<polyline fill="none" stroke="${c}" stroke-width="2" stroke-linejoin="round" points="${pts.map((p,i)=>X(i).toFixed(1)+','+Y(p.y).toFixed(1)).join(' ')}"/>`;
+  const dots=pts.map((p,i)=>`<circle cx="${X(i).toFixed(1)}" cy="${Y(p.y).toFixed(1)}" r="3" fill="${c}"/>`).join('');
+  const idx=[0,Math.floor((pts.length-1)/2),pts.length-1].filter((v,i,a)=>a.indexOf(v)===i);
+  return`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="추이 그래프">${grid}${line}${dots}${idx.map(i=>`<text x="${X(i).toFixed(1)}" y="${H-5}" text-anchor="${i===0&&pts.length>1?'start':i===pts.length-1&&pts.length>1?'end':'middle'}" font-size="10" fill="var(--mu)">${pts[i].x}</text>`).join('')}</svg>`
+}
+const stPeriodBar=()=>`<div class="fseg" role="group" aria-label="기간">${PERIODS.map(a=>`<button class="${ST.p===a[0]?'on':''}" data-act="stp" data-v="${a[0]}">${a[1]}</button>`).join('')}</div>`;
+const fmtHM=min=>min>=60?Math.floor(min/60)+'시간 '+(min%60?min%60+'분':''):min+'분';
+const METR={dur:['지속시간',v=>fmtHM(Math.round(v))],vol:['볼륨',v=>fmt(v)+' kg'],rep:['반복',v=>fmt(v)+' 회']};
+function stTrend(){
+  const bk=stBuckets(ST.p),k=ST.m,vals=bk.list.map(b=>k==='dur'?b.dur/60:k==='vol'?b.vol:b.rep);
+  const tot=bk.list.reduce((a,b)=>a+(k==='dur'?b.dur:k==='vol'?b.vol:b.rep),0),days=bk.list.reduce((a,b)=>a+b.days,0);
+  const wks=Math.max(1,bk.r.n/7),lab=b=>bk.unit==='m'?(+b.k.slice(5,7))+'월':mdl(b.k);
+  const fy=k==='dur'?v=>(Math.round(v*10)/10)+'h':k==='vol'?v=>v>=1000?(Math.round(v/100)/10)+'k':Math.round(v)+'':v=>Math.round(v)+'';
+  return`<div class="pn"><div class="row"><b class="h2">활동 추이</b><span class="mu">${bk.unit==='d'?'일':bk.unit==='w'?'주':'월'} 단위</span></div>
+  <div style="margin:6px 0 2px"><b style="font-size:22px">${METR[k][1](k==='dur'?tot:tot)}</b> <span class="mu">${ST.p==='all'?'전체 기간':'최근 '+PERIODS.find(a=>a[0]===ST.p)[1]} · 운동 ${days}일 · 주 평균 ${(days/wks).toFixed(1)}회</span></div>
+  ${stPeriodBar()}${barChart(vals,bk.list.map(lab),fy)}
+  <div class="fseg" role="group" aria-label="지표">${Object.keys(METR).map(m=>`<button class="${k===m?'on':''}" data-act="stm" data-v="${m}">${METR[m][0]}</button>`).join('')}</div>
+  ${k==='dur'&&!bk.list.some(b=>b.dur)?'<div class="mu" style="margin-top:4px">세트 체크 시각이 있는 운동만 지속시간이 집계돼요</div>':''}</div>`
+}
+const ST_MENU=[['sets','근육 그룹당 세트 수','각 부위에 기록된 세트 수예요.'],['dist','근육 분포 (차트)','현재와 이전 기간의 부위 분포를 비교해요.'],['body','근육 분포 (신체)','운동한 부위의 히트맵이에요.'],['top','주요 운동','가장 자주 하는 운동 목록이에요.'],['month','월간 리포트','월간 운동과 통계를 요약해요.'],['ex','종목별 분석','종목마다 회차별 수행 능력을 비교해요.'],['meas','측정','체중·체지방률 추이예요.']];
+const stMenu=()=>`<div class="pn"><div class="h2">고급 통계</div><div style="margin-top:6px">${ST_MENU.map(a=>`<button class="ex" style="width:100%;margin-bottom:6px;text-align:left" data-act="stv" data-v="${a[0]}"><span style="min-width:0"><b>${a[1]}</b><br><small class="mu">${a[2]}</small></span><span class="mu">›</span></button>`).join('')}</div></div>`;
+function stSetsByPart(from,to){const o={};PKS.forEach(k=>o[k]=0);stDates(from,to).forEach(d=>dayItems(d).forEach(x=>{const e=EX[x.id];if(e&&e.part in o)o[e.part]+=doneSets(x).length}));return o}
+function stSetsView(){
+  const r=stRange(ST.p),o=stSetsByPart(r.from,r.to),mx=Math.max(1,...Object.values(o)),wk=Math.max(1,r.n/7);
+  return`<div class="pn"><div class="h2">근육 그룹당 세트 수</div><div class="mu" style="margin:4px 0">웜업을 뺀 완료 세트예요. 주 평균은 기간을 주 단위로 나눈 값이에요.</div>${stPeriodBar()}
+  ${PKS.slice().sort((a,b)=>o[b]-o[a]).map(k=>`<div class="sp"><div class="row"><b style="color:${PC[k]}">${P[k]}</b><span>${o[k]}세트 <span class="mu">· 주 ${(o[k]/wk).toFixed(1)}</span></span></div><div class="bar" style="--c:${PC[k]}"><i style="width:${o[k]/mx*100}%"></i></div></div>`).join('')}</div>`
+}
+function stDistView(){
+  const r=stRange(ST.p),a=partVol(r.from,r.to),b=partVol(r.pf,r.pt),ta=Object.values(a).reduce((x,y)=>x+y,0)||1,tb=Object.values(b).reduce((x,y)=>x+y,0)||1;
+  return`<div class="pn"><div class="h2">근육 분포 (차트)</div><div class="mu" style="margin:4px 0">볼륨 기준이에요. 이전 기간은 같은 길이만큼 바로 앞 기간이에요.</div>${stPeriodBar()}${radar(a,b,'이번 기간','이전 기간')}
+  ${PKS.map(k=>{const pa=Math.round(a[k]/ta*100),pb=Math.round(b[k]/tb*100);return`<div class="sp row"><b style="color:${PC[k]}">${P[k]}</b><span>${pa}% <span class="mu">(이전 ${pb}% · ${pa-pb>0?'+':''}${pa-pb}p)</span></span></div>`}).join('')}</div>`
+}
+function bodySvg(o){
+  const mx=Math.max(1,...Object.values(o)),f=k=>{const v=(o[k]||0)/mx;return`fill="#e5484d" fill-opacity="${(.12+.82*v).toFixed(2)}" stroke="var(--ln)" stroke-width="1"`};
+  const head=`<circle cx="50" cy="16" r="12" fill="none" stroke="var(--ln)" stroke-width="1.4"/>`;
+  const arms=`<rect x="14" y="52" width="11" height="48" rx="6" ${f('arm')}/><rect x="75" y="52" width="11" height="48" rx="6" ${f('arm')}/>`;
+  const sh=`<ellipse cx="30" cy="47" rx="12" ry="9" ${f('shoulder')}/><ellipse cx="70" cy="47" rx="12" ry="9" ${f('shoulder')}/>`;
+  const legs=`<rect x="34" y="120" width="14" height="86" rx="7" ${f('leg')}/><rect x="52" y="120" width="14" height="86" rx="7" ${f('leg')}/>`;
+  const front=`<g>${head}${arms}${sh}<rect x="33" y="54" width="16" height="20" rx="6" ${f('chest')}/><rect x="51" y="54" width="16" height="20" rx="6" ${f('chest')}/><rect x="37" y="77" width="26" height="40" rx="8" ${f('core')}/>${legs}</g>`;
+  const back=`<g transform="translate(110,0)">${head}${arms}${sh}<path d="M34 54 L66 54 L62 112 L38 112 Z" ${f('back')}/>${legs}</g>`;
+  return`<svg viewBox="0 0 210 212" width="100%" style="max-width:340px;display:block;margin:6px auto" role="img" aria-label="신체 히트맵"><text x="50" y="210" text-anchor="middle" font-size="9" fill="var(--mu)">앞</text><text x="160" y="210" text-anchor="middle" font-size="9" fill="var(--mu)">뒤</text>${front}${back}</svg>`
+}
+function stBodyView(){
+  const r=stRange(ST.p),o=stSetsByPart(r.from,r.to);
+  return`<div class="pn"><div class="h2">근육 분포 (신체)</div><div class="mu" style="margin:4px 0">운동한 부위의 히트맵이에요. 진할수록 세트가 많아요. (부위 6개 기준의 단순 모형)</div>${stPeriodBar()}${bodySvg(o)}
+  <div class="mu" style="text-align:center">연함 <span style="display:inline-block;width:80px;height:8px;border-radius:4px;vertical-align:middle;background:linear-gradient(90deg,rgba(229,72,77,.12),rgba(229,72,77,.94))"></span> 진함</div>
+  <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;justify-content:center">${PKS.map(k=>`<span class="mu"><b style="color:${PC[k]}">${P[k]}</b> ${o[k]}세트</span>`).join('')}</div></div>`
+}
+function stTopView(){
+  const r=stRange(ST.p),ex={};stDates(r.from,r.to).forEach(d=>dayItems(d).forEach(x=>{const e=EX[x.id];if(!e||e.missing||e.part==='cardio')return;const q=ex[x.id]=ex[x.id]||{n:0,v:0,s:0};q.n++;q.v+=vol(x.sets,x.id);q.s+=doneSets(x).length}));
+  const ks=Object.keys(ex).sort((a,b)=>ex[b].n-ex[a].n||ex[b].v-ex[a].v).slice(0,20),mx=Math.max(1,...ks.map(k=>ex[k].n));
+  return`<div class="pn"><div class="h2">주요 운동</div><div class="mu" style="margin:4px 0">가장 자주 한 순서예요. 누르면 종목별 분석으로 가요.</div>${stPeriodBar()}
+  ${ks.length?ks.map((k,i)=>`<button class="sp" style="width:100%;text-align:left;background:none;border:0;color:inherit;font:inherit;padding:6px 0;cursor:pointer" data-act="stex" data-id="${k}"><div class="row"><span><b>${i+1}.</b> ${esc(EX[k].name)}</span><span class="mu">${ex[k].n}회 · ${ex[k].s}세트 · ${fmt(ex[k].v)}kg</span></div><div class="bar" style="--c:${PC[EX[k].part]}"><i style="width:${ex[k].n/mx*100}%"></i></div></button>`).join(''):'<div class="mu">이 기간에는 기록이 없어요</div>'}</div>`
+}
+function stRecsOf(id){
+  const o=[];allDates().sort().forEach(d=>dayItems(d).forEach(x=>{if(x.id!==id)return;const ss=doneSets(x);if(!ss.length)return;o.push({d,sets:x.sets,ss})}));return o}
+function stExStats(id,recs){
+  const R=window.RuneTier;let wBest=null,eBest=null,sBest=null,vBest=null;const byRep={};let tot=0;
+  recs.forEach(q=>{let v=0;q.ss.forEach(s=>{const w=+s.w||0,r=+s.r||0,e=e1of(w,r),sv=vol([s],id);v+=sv;
+    if(!wBest||w>wBest.v)wBest={v:w,d:q.d,r};if(e&&(!eBest||e>eBest.v))eBest={v:e,d:q.d};if(sv&&(!sBest||sv>sBest.v))sBest={v:sv,d:q.d,w,r};
+    if(r>=1&&r<=12&&w>0&&(!byRep[r]||w>byRep[r].w))byRep[r]={w,d:q.d}});
+    q.v=v;q.e=Math.max(0,...q.ss.map(s=>e1of(s.w,s.r)));q.top=Math.max(0,...q.ss.map(s=>+s.w||0));q.sb=Math.max(0,...q.ss.map(s=>vol([s],id)));tot+=v;if(!vBest||v>vBest.v)vBest={v,d:q.d}});
+  return{wBest,eBest,sBest,vBest,byRep,tot}
+}
+function stExView(){
+  const cnt={};allDates().forEach(d=>dayItems(d).forEach(x=>{const e=EX[x.id];if(!e||e.missing||e.part==='cardio'||!doneSets(x).length)return;cnt[x.id]=(cnt[x.id]||0)+1}));
+  const ids=Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a]);
+  const sel=`<select class="fi" data-st="ex" style="width:100%"><option value="">종목 선택 (기록 있는 ${ids.length}개)</option>${ids.map(k=>`<option value="${k}"${ST.ex===k?' selected':''}>${esc(EX[k].name)} · ${cnt[k]}회</option>`).join('')}</select>`;
+  let body='<div class="mu" style="margin-top:8px">종목을 고르면 최고 중량·1RM·세트 볼륨 추이와 회차별 기록을 볼 수 있어요.</div>';
+  const id=ST.ex;
+  if(id&&EX[id]&&cnt[id]){
+    let recs=stRecsOf(id);const st=stExStats(id,recs),r=stRange(ST.p);const inP=recs.filter(q=>q.d>=r.from);
+    const M={w:['가장 무거운 중량',q=>q.top,v=>Math.round(v*10)/10+'kg'],e:['1회 최대(예상 1RM)',q=>q.e,v=>Math.round(v)+'kg'],s:['최고 세트 볼륨',q=>q.sb,v=>fmt(v)+'kg'],v:['세션 볼륨',q=>q.v,v=>fmt(v)+'kg']},m=M[ST.exm]||M.w;
+    const pts=inP.map(q=>({x:mdl(q.d),y:m[1](q)}));
+    const last=pts.length?pts[pts.length-1]:null;
+    const rep=Object.keys(st.byRep).sort((a,b)=>a-b).map(k=>`<div class="sp row"><span>${k}회</span><span><b>${Math.round(st.byRep[k].w*10)/10}kg</b> <span class="mu">${st.byRep[k].d.slice(2).replace(/-/g,'.')}</span></span></div>`).join('');
+    const hist=recs.slice().reverse().slice(0,40).map(q=>{let tr='';try{const b=bestOf({id,sets:q.ss});if(b.ok)tr=`<span class="emw">${embImg(b.t,22)}<small style="color:${TIERC[b.t]}">${window.RuneTier.TIERS[b.t]}</small></span>`}catch(e){}
+      return`<div class="rpr" style="padding:6px 0"><span><b>${q.d.slice(2).replace(/-/g,'.')}</b><small>${(q.sets||[]).map(s=>(s.t==='W'?'W ':s.t==='F'?'F ':'')+(+s.w||0)+'×'+(+s.r||0)).join(' · ')}</small></span>${tr}</div>`}).join('');
+    body=`<div style="margin-top:10px"><b style="font-size:16px">${esc(EX[id].name)}</b> <span class="mu">${P[EX[id].part]} · ${recs.length}회 수행</span></div>
+    <div class="cards" style="margin-top:6px"><div><span class="mu">최고 중량</span><b>${st.wBest?Math.round(st.wBest.v*10)/10+'kg':'-'}</b></div><div><span class="mu">예상 1RM</span><b>${st.eBest?Math.round(st.eBest.v)+'kg':'-'}</b></div><div><span class="mu">최고 세트 볼륨</span><b>${st.sBest?fmt(st.sBest.v)+'kg':'-'}</b></div><div><span class="mu">누적 볼륨</span><b>${fmt(st.tot)}kg</b></div></div>
+    <div class="h2" style="margin-top:10px">${m[0]} 추이 ${last?`<span class="mu" style="font-size:12px;font-weight:400">· 최근 ${m[2](last.y)}</span>`:''}</div>${stPeriodBar()}${lineChart(pts,v=>m[2](v).replace('kg',''))}
+    <div class="fseg" role="group" aria-label="지표">${Object.keys(M).map(k=>`<button class="${ST.exm===k?'on':''}" data-act="stexm" data-v="${k}">${M[k][0]}</button>`).join('')}</div>
+    <div class="h2" style="margin-top:10px">🏅 개인 기록</div>${st.wBest?`<div class="mu" style="margin-bottom:4px">최고 중량 ${Math.round(st.wBest.v*10)/10}kg×${st.wBest.r} (${st.wBest.d.slice(2).replace(/-/g,'.')}) · 최고 세션 볼륨 ${fmt(st.vBest.v)}kg (${st.vBest.d.slice(2).replace(/-/g,'.')})</div>`:''}${rep||'<div class="mu">횟수별 기록이 없어요</div>'}
+    <div class="h2" style="margin-top:10px">회차별 기록 <span class="mu" style="font-size:12px;font-weight:400">· 최근 ${Math.min(40,recs.length)}회, 오른쪽은 그날의 티어</span></div>${hist}`
+  }
+  return`<div class="pn"><div class="h2">종목별 분석</div>${sel}${body}</div>`
+}
+function stMonthView(){
+  const ym0=T.slice(0,7);if(!ST.mo)ST.mo=ym0;const ym=ST.mo,[y,m]=ym.split('-').map(Number),pm=m===1?(y-1)+'-12':y+'-'+String(m-1).padStart(2,'0'),nm=m===12?(y+1)+'-01':y+'-'+String(m+1).padStart(2,'0');
+  const sum=k=>{const ds=allDates().filter(d=>d.slice(0,7)===k&&dayItems(d).length).sort(),o={days:ds,vol:0,dur:0,rep:0,set:0,ex:{},part:{}};PKS.forEach(p=>o.part[p]=0);
+    ds.forEach(d=>{o.vol+=dayVol(d);o.dur+=dayDur(d);o.rep+=dayReps(d);o.set+=daySets(d);dayItems(d).forEach(x=>{const e=EX[x.id];if(!e||e.missing||e.part==='cardio')return;const q=o.ex[x.id]=o.ex[x.id]||{n:0,v:0};q.n++;q.v+=vol(x.sets,x.id);if(e.part in o.part)o.part[e.part]+=doneSets(x).length})});return o};
+  const a=sum(ym),b=sum(pm),dl=(x,z)=>z?(x>=z?'▲ ':'▼ ')+Math.abs(Math.round((x-z)/z*100))+'%':'';
+  /* 이번 달 신기록: 달 이전 최고 e1RM을 넘긴 종목 */
+  const prs=[];Object.keys(a.ex).forEach(id=>{let before=0,best=0,bd='';allDates().sort().forEach(d=>dayItems(d).forEach(x=>{if(x.id!==id)return;const e=Math.max(0,...doneSets(x).map(s=>e1of(s.w,s.r)));if(d.slice(0,7)<ym)before=Math.max(before,e);else if(d.slice(0,7)===ym&&e>best){best=e;bd=d}}));if(best>0&&before>0&&best>before)prs.push({id,best,before,bd})});
+  const cal=(()=>{const dim=new Date(y,m,0).getDate(),first=new Date(y,m-1,1).getDay();let h='<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;text-align:center;font-size:11px">'+'일월화수목금토'.split('').map(c=>`<span class="mu">${c}</span>`).join('');for(let i=0;i<first;i++)h+='<span></span>';
+    for(let d=1;d<=dim;d++){const k=ym+'-'+String(d).padStart(2,'0'),on=dayItems(k).length>0;h+=`<span style="padding:4px 0;border-radius:6px;${on?'background:var(--cy);color:#fff;font-weight:700':'color:var(--mu)'}">${d}</span>`}return h+'</div>'})();
+  const mxp=Math.max(1,...Object.values(a.part)),tops=Object.keys(a.ex).sort((p,q)=>a.ex[q].n-a.ex[p].n).slice(0,5);
+  return`<div class="pn"><div class="h2">월간 리포트</div>
+  <div class="row" style="margin:6px 0"><button class="btn ghost sm" data-act="stmo" data-v="${pm}" style="width:auto">◀</button><b style="font-size:17px">${y}년 ${m}월</b><button class="btn ghost sm" data-act="stmo" data-v="${nm}" style="width:auto"${nm>ym0?' disabled':''}>▶</button></div>
+  <div class="cards"><div><span class="mu">운동한 날</span><b>${a.days.length}일</b><small class="mu">${dl(a.days.length,b.days.length)}</small></div><div><span class="mu">총 볼륨</span><b>${fmt(a.vol)}kg</b><small class="mu">${dl(a.vol,b.vol)}</small></div><div><span class="mu">완료 세트</span><b>${a.set}</b><small class="mu">${dl(a.set,b.set)}</small></div><div><span class="mu">반복</span><b>${fmt(a.rep)}</b><small class="mu">${dl(a.rep,b.rep)}</small></div></div>
+  <div class="mu" style="margin:4px 0 8px">지속시간 ${a.dur?fmtHM(a.dur):'-'} · 전월 대비는 ▲▼ 비율이에요</div>${cal}
+  <div class="h2" style="margin-top:12px">부위별 세트</div>${PKS.map(k=>`<div class="sp"><div class="row"><b style="color:${PC[k]}">${P[k]}</b><span>${a.part[k]}세트</span></div><div class="bar" style="--c:${PC[k]}"><i style="width:${a.part[k]/mxp*100}%"></i></div></div>`).join('')}
+  <div class="h2" style="margin-top:12px">많이 한 운동</div>${tops.length?tops.map(k=>`<div class="sp row"><span>${esc(EX[k].name)}</span><span class="mu">${a.ex[k].n}회 · ${fmt(a.ex[k].v)}kg</span></div>`).join(''):'<div class="mu">이 달 기록이 없어요</div>'}
+  <div class="h2" style="margin-top:12px">🏅 이번 달 신기록</div>${prs.length?prs.sort((p,q)=>q.best/q.before-p.best/p.before).map(p=>`<div class="sp row"><span>${esc(EX[p.id].name)}</span><span><b>예상 1RM ${Math.round(p.best)}kg</b> <span class="mu">(이전 ${Math.round(p.before)}kg · ${p.bd.slice(5).replace('-','/')})</span></span></div>`).join(''):'<div class="mu">이전 기록과 비교할 신기록이 없어요</div>'}</div>`
+}
+function stMeasView(){
+  const L=(S.bodyLog||[]).slice().sort((x,y)=>x.d<y.d?-1:1),r=stRange(ST.p),k=ST.bm==='bf'?'bf':'kg',rows=L.filter(x=>x.d>=r.from&&x[k]!=null);
+  const pts=rows.map(x=>({x:mdl(x.d),y:+x[k]})),cur=L.length?L[L.length-1]:null;
+  return`<div class="pn"><div class="h2">측정</div>${cur?`<div style="margin:6px 0"><b style="font-size:22px">${cur.kg}kg</b> <span class="mu">${cur.bf!=null?'· 체지방률 '+cur.bf+'%':''} · ${cur.d.slice(5).replace('-','/')} 기준</span></div>`:'<div class="mu" style="margin:6px 0">내 정보에서 체중·체지방률을 입력하면 추이가 쌓여요</div>'}
+  ${stPeriodBar()}${lineChart(pts,v=>k==='kg'?Math.round(v*10)/10+'':Math.round(v*10)/10+'%',k==='kg'?'var(--cy)':'#e0a82e')}
+  <div class="fseg" role="group" aria-label="지표"><button class="${k==='kg'?'on':''}" data-act="stbm" data-v="kg">체중</button><button class="${k==='bf'?'on':''}" data-act="stbm" data-v="bf">체지방률</button></div>
+  ${rows.slice().reverse().slice(0,12).map(x=>`<div class="sp row"><span>${x.d.slice(2).replace(/-/g,'.')}</span><span>${x.kg}kg${x.bf!=null?' · '+x.bf+'%':''}</span></div>`).join('')}</div>`
+}
+function stSub(){
+  const v=ST.v,back=`<button class="x" style="font-size:14px;margin-bottom:6px" data-act="stv" data-v="">◀ 통계분석</button>`;
+  const f={sets:stSetsView,dist:stDistView,body:stBodyView,top:stTopView,month:stMonthView,ex:stExView,meas:stMeasView}[v];
+  return `<h1 class="h1">통계분석</h1>${back}${f?f():''}`
 }
 function viewStat(){
+  if(ST.v)return stSub();
   const a=partVol(dAgo(29),T),b=partVol(dAgo(59),dAgo(30));
   const ds=allDates().filter(d=>d>=dAgo(29)&&dayVol(d)>0);
   const tot=Object.values(a).reduce((x,y)=>x+y,0);
@@ -1632,9 +1831,9 @@ function viewStat(){
   const all=partVol('0000','9999'),ex={};
   allDates().forEach(d=>dayItems(d).forEach(x=>{ex[x.id]=ex[x.id]||{n:0,v:0};ex[x.id].n++;ex[x.id].v+=vol(x.sets,x.id)}));
   const top=Object.keys(ex).filter(k=>!(EX[k].missing&&EX[k].name==='(삭제된 종목)')).sort((p,q)=>ex[q].n-ex[p].n).slice(0,5);
-  const mast=Object.keys(P).map(k=>{let i=0;TIER.forEach((t,j)=>{if(all[k]>=t[0])i=j});const nx=TIER[i+1],pr=nx?(all[k]-TIER[i][0])/(nx[0]-TIER[i][0]):1;
+  const mast=Object.keys(P).filter(k=>k!=='cardio').map(k=>{let i=0;TIER.forEach((t,j)=>{if(all[k]>=t[0])i=j});const nx=TIER[i+1],pr=nx?(all[k]-TIER[i][0])/(nx[0]-TIER[i][0]):1;
     return `<div class="sp"><div class="row"><b style="color:${PC[k]}">${P[k]}</b><span>${TIER[i][1]} <span class="mu">${fmt(all[k])}kg${nx?' / '+fmt(nx[0]):''}</span></span></div><div class="bar" style="--c:${PC[k]}"><i style="width:${Math.min(100,pr*100)}%"></i></div></div>`}).join('');
-  return `<h1 class="h1">통계분석</h1><div class="pn"><div class="h2">부위별 균형 (최근 30일)</div>${radar(a,b)}
+  return `<h1 class="h1">통계분석</h1>${stTrend()}${stMenu()}<div class="pn"><div class="h2">부위별 균형 (최근 30일)</div>${radar(a,b)}
   <div class="cards"><div><span class="mu">운동한 날</span><b>${ds.length}일</b></div><div><span class="mu">총 볼륨</span><b>${fmt(tot)}kg</b></div><div><span class="mu">완료 세트</span><b>${setN}</b></div><div><span class="mu">주당 평균</span><b>${(ds.length/30*7).toFixed(1)}회</b></div></div></div>
   <div class="pn"><div class="h2">자주 하는 운동</div>${top.length?top.map(id=>`<div class="sp row"><span>${EX[id].name}</span><span class="mu">${ex[id].n}회 · ${fmt(ex[id].v)}kg</span></div>`).join(''):'<div class="mu">기록을 저장하면 여기에 쌓여요</div>'}</div>
   ${tierPanel()}
@@ -1891,14 +2090,24 @@ function dupCard(){
   const d=memDups();if(!d.length)return '';
   return `<div class='pn' style='border-color:#e5484d88'><b style='color:#e5484d'>❗ 같은 사람일 수 있는 회원 ${d.length}쌍</b><div class='mu' style='margin:4px 0 6px'>성이 빠진 이름과 성+이름이 같이 있어요. 같은 사람이면 합치세요.</div>`+d.slice(0,15).map(p=>{const f=AD().members.find(x=>x.id===p.from),t=AD().members.find(x=>x.id===p.to);return `<div class='row' style='gap:6px;margin-top:6px'><span>${esc(f.name)} → <b>${esc(t.name)}</b></span><button class='btn sm' data-act='mdupask' data-from='${f.id}' data-to='${t.id}'>합치기</button></div>`}).join('')+`</div>`;
 }
+/* 회원 등급: 1급=PT 관리대상 · 2급=OT/만료/플로팅 · 3급=일반(Nom) */
+const GR={1:{t:'1급',d:'PT',c:'#e5484d'},2:{t:'2급',d:'OT·만료·플로팅',c:'#d9a400'},3:{t:'3급',d:'일반',c:'#2aa7c0'}};
+let MGF='';
+const grOf=m=>GR[m.grade]?+m.grade:0;
+const grBadge=m=>GR[m.grade]?` <b class="grb" style="background:${GR[m.grade].c}">${GR[m.grade].t}</b>`:'';
+function gradeBar(m){return `<div class="pn" style="margin:8px 0"><div class="row"><b>회원 등급</b><span class="mu">${GR[m.grade]?GR[m.grade].d:'미분류'}</span></div><div class="fseg" role="group" aria-label="회원 등급" style="margin-top:6px">${[1,2,3].map(g=>`<button class="${m.grade===g?'on':''}" data-act="mgrade" data-id="${m.id}" data-v="${g}" style="${m.grade===g?'background:'+GR[g].c+';border-color:'+GR[g].c+';color:#fff':''}">${GR[g].t}<br><small>${GR[g].d}</small></button>`).join('')}</div></div>`}
+function gfBar(){const all=AD().members,n=g=>all.filter(m=>grOf(m)===g).length;
+  const b=(v,l,c)=>`<button class="${MGF===v?'on':''}" data-act="mgf" data-v="${v}">${l}<br><small>${c}</small></button>`;
+  return `<div class="fseg" role="group" aria-label="등급 보기" style="margin-bottom:8px">${b('','전체',all.length)}${b('1','1급',n(1))}${b('2','2급',n(2))}${b('3','3급',n(3))}${n(0)?b('0','미분류',n(0)):''}</div>`}
 let MSQ='';
 function viewMem(){
-  return `<h1 class='h1'>내 회원</h1>${syCard()}${dupCard()}${(L=>L.length?`<div class='pn' style='border-color:#d9a400'><b style='color:#d9a400'>🔔 재등록 임박 ${L.length}명</b><div class='mu' style='margin-top:4px'>${L.map(o=>esc(o.q.name)+' '+o.x.cur+'회').join(' · ')}</div></div>`:'')(rmLowList())}${(w=>w.length?`<div class='pn' style='border-color:#e5484d'><b style='color:#e5484d'>❗ 이번 달 잔여수업 미입력 ${w.length}명</b><div class='mu' style='margin-top:4px'>${w.map(q=>esc(q.name)).join(', ')}</div></div>`:'')(rmWarnList())}<div class='pn'><div class='h2'>회원 추가</div><div class='mu'>가입한 회원은 [가입 회원에서 추가]로 계정을 연결해요. 계정이 연결된 회원에게만 루틴을 보낼 수 있어요. 이름만 직접 추가할 수도 있어요.</div><div class='row' style='gap:8px;margin-top:8px'><input type='text' id='mn' placeholder='회원 이름'><button class='btn sm' style='white-space:nowrap' data-act='amadd'>추가</button></div><button class='btn ghost' style='margin-top:8px' data-act='apicker' data-id=''>가입 회원에서 추가</button></div><div class='pn'><input type='search' id='msq' placeholder='회원 이름 검색' value='${esc(MSQ)}' autocomplete='off' style='margin-bottom:8px'><div id='mlist'>${memRowsHTML()}</div></div>`;
+  return `<h1 class='h1'>내 회원</h1>${syCard()}${dupCard()}${(L=>L.length?`<div class='pn' style='border-color:#d9a400'><b style='color:#d9a400'>🔔 재등록 임박 ${L.length}명</b><div class='mu' style='margin-top:4px'>${L.map(o=>esc(o.q.name)+' '+o.x.cur+'회').join(' · ')}</div></div>`:'')(rmLowList())}${(w=>w.length?`<div class='pn' style='border-color:#e5484d'><b style='color:#e5484d'>❗ 이번 달 잔여수업 미입력 ${w.length}명</b><div class='mu' style='margin-top:4px'>${w.map(q=>esc(q.name)).join(', ')}</div></div>`:'')(rmWarnList())}<div class='pn'><div class='h2'>회원 추가</div><div class='mu'>가입한 회원은 [가입 회원에서 추가]로 계정을 연결해요. 계정이 연결된 회원에게만 루틴을 보낼 수 있어요. 이름만 직접 추가할 수도 있어요.</div><div class='row' style='gap:8px;margin-top:8px'><input type='text' id='mn' placeholder='회원 이름'><button class='btn sm' style='white-space:nowrap' data-act='amadd'>추가</button></div><button class='btn ghost' style='margin-top:8px' data-act='apicker' data-id=''>가입 회원에서 추가</button></div><div class='pn'><input type='search' id='msq' placeholder='회원 이름 검색' value='${esc(MSQ)}' autocomplete='off' style='margin-bottom:8px'><div id='mgfb'>${gfBar()}</div><div id='mlist'>${memRowsHTML()}</div></div>`;
 }
 function memRowsHTML(){
   const ym=T.slice(0,7),dn=rmDone(ym),any=rmAny(ym),rmt=m=>{const x=rmCalc(m,ym,dn);return x.cur!=null?` · 잔여 ${x.cur}회${x.st==='diff'?' ❗':''}`:(any[m.id]?` · <b style='color:#e5484d'>❗ 잔여 미입력</b>`:'')},cnt=m=>Object.values(AD().plans).reduce((a,l)=>a+uniqPlan(l).filter(x=>x.name===m.name).length,0),q=MSQ.trim().toLowerCase().replace(/\s+/g,''),all=AD().members;
-  const ms=q?all.filter(m=>String(m.name||'').toLowerCase().replace(/\s+/g,'').includes(q)):all;
-  return (q?`<div class='mu' style='margin-bottom:6px'>검색 결과 ${ms.length}명 / 전체 ${all.length}명</div>`:'')+ms.map(m=>`<div style='display:flex;gap:6px;align-items:stretch'><button class='ex' style='flex:1;min-width:0' data-act='amem' data-id='${m.id}'><span style='min-width:0'>${esc(m.name)}${m.uid?(m.lk==='pending'?' ⏳':m.lk==='active'?' 🔗✔':' 🔗'):''}${m.temp?` <small class='mu'>(임시)</small>`:''}${togetherTxt(m)?`<br><small class='mu' style='font-size:11px'>${togetherTxt(m)}</small>`:''}</span><span class='mu'>수업 ${cnt(m)}회 · 기록 ${(m.log||[]).length}건${rmt(m)}</span></button>${m.uid?'':`<button class='btn ghost sm' style='white-space:nowrap' data-act='medit' data-id='${m.id}'>수정</button>`}</div>`).join('')||`<div class='mu'>${q?'검색한 이름의 회원이 없어요':'아직 회원이 없어요'}</div>`;
+  let ms=q?all.filter(m=>String(m.name||'').toLowerCase().replace(/\s+/g,'').includes(q)):all;
+  if(MGF!=='')ms=ms.filter(m=>grOf(m)===+MGF);else ms=ms.map((m,i)=>[m,i]).sort((a,b)=>((grOf(a[0])||9)-(grOf(b[0])||9))||a[1]-b[1]).map(a=>a[0]);
+  return ((q||MGF!=='')?`<div class='mu' style='margin-bottom:6px'>${MGF!==''?(GR[MGF]?GR[MGF].t+' · '+GR[MGF].d:'미분류'):'검색 결과'} ${ms.length}명 / 전체 ${all.length}명</div>`:'')+ms.map(m=>`<div style='display:flex;gap:6px;align-items:stretch'><button class='ex' style='flex:1;min-width:0' data-act='amem' data-id='${m.id}'><span style='min-width:0'>${esc(m.name)}${grBadge(m)}${m.uid?(m.lk==='pending'?' ⏳':m.lk==='active'?' 🔗✔':' 🔗'):''}${m.temp?` <small class='mu'>(임시)</small>`:''}${togetherTxt(m)?`<br><small class='mu' style='font-size:11px'>${togetherTxt(m)}</small>`:''}</span><span class='mu'>수업 ${cnt(m)}회 · 기록 ${(m.log||[]).length}건${rmt(m)}</span></button>${m.uid?'':`<button class='btn ghost sm' style='white-space:nowrap' data-act='medit' data-id='${m.id}'>수정</button>`}</div>`).join('')||`<div class='mu'>${q?'검색한 이름의 회원이 없어요':'아직 회원이 없어요'}</div>`;
 }
 function reviewHTML(d){
   const fl=d.slots.filter(Boolean);
@@ -2129,6 +2338,34 @@ function memHTML2(){
     return `<div class='pn'><b class='h2'>${it.time}–${endT(it.time)}${it.no?' · '+it.no+'차시':''}</b>${rn||`<div class='mu' style='margin-top:6px'>룬 페이지 기록이 없어요</div>`}${blk('수업 내용',it.memo)}${blk('특이사항',it.special,it.spDone)}${blk('과제',it.hw,it.hwDone)}${blk('다음 수업 목표',it.goal)}</div>`}).join('');
   return `<div class='row'><button class='x' style='font-size:14px' data-act='amem' data-id='${m.id}'>◀ 회원정보</button><button class='x' data-act='close'>✕</button></div><b class='h2'>${esc(m.name)}${m.temp?' (임시)':''} 운동일지</b><div class='row' style='margin:8px 0'><button class='x' data-act='mmon' data-v='-1'>◀</button><b>${y}년 ${mo+1}월</b><button class='x' data-act='mmon' data-v='1'>▶</button></div><div class='cal'>${cells}</div><div class='mu' style='margin:6px 0 10px'>형광펜 날짜는 PT 수업이 있던 날이에요. 날짜를 누르면 그날의 진행 내용이 나와요.</div>${MC.d?(day||`<div class='mu'>${MC.d}에는 수업 기록이 없어요</div>`):''}`;
 }
+/* ---- 티어 시뮬레이터: 종목·무게·횟수를 바꿔 보며 티어를 실시간으로 확인 (임시회원도 몸 정보만 있으면 돼요) ---- */
+function simOpts(sel){const g={};Object.keys(EX).map(k=>EX[k]).filter(e=>e&&!e.hidden&&!e.missing&&e.part!=='cardio').sort((a,b)=>a.sort-b.sort).forEach(e=>(g[e.part]=g[e.part]||[]).push(e));
+  return '<option value="">종목 선택</option>'+Object.keys(g).map(p=>`<optgroup label="${P[p]}">${g[p].map(e=>`<option value="${e.id}"${e.id===sel?' selected':''}>${esc(e.name)}</option>`).join('')}</optgroup>`).join('')}
+function simRes(m,r){
+  const R=window.RuneTier;if(!r.id)return '<span class="mu">종목을 골라 주세요</span>';
+  if(!memBodyOk(m))return '<span class="mu">위에 몸 정보를 먼저 입력해 주세요</span>';
+  if(!(+r.w>0)||!(+r.r>=1))return '<span class="mu">무게와 횟수를 입력하면 티어가 나와요</span>';
+  if(+r.r>20)return '<span class="mu">20회를 넘으면 평가하지 않아요</span>';
+  try{const x={id:r.id,sets:[{t:'M',w:+r.w,r:+r.r,done:true}]},g=gradeCalc(x,memBody(m));
+    if(!g.ok)return `<span class="mu">${esc(g.why)}</span>`;
+    const row=g.rows[0];if(!row)return '<span class="mu">평가할 수 없어요</span>';
+    const t=row.t,nx=g.th.find(h=>h.t===t+1);
+    let nt='<span class="mu">최고 티어예요</span>';
+    if(nx){const need=Math.ceil(nx.eq*R.rmPct(+r.r)*2-1e-9)/2;let rr=0;for(let k=1;k<=20;k++)if(+r.w/R.rmPct(k)>=nx.eq-1e-9){rr=k;break}
+      nt=`<span class="mu">다음 <b>${R.TIERS[t+1]}</b> · ${need}kg×${r.r}회${rr?' 또는 '+r.w+'kg×'+rr+'회':''}</span>`}
+    return `<span class="emw">${embImg(t,26)} <b>${R.TIERS[t]||''}</b> <small class="mu">1RM ≈ ${Math.round(row.e1*10)/10}kg</small></span><div style="margin-top:2px">${nt}</div>`
+  }catch(e){return '<span class="mu">계산할 수 없어요</span>'}}
+function simHTML(m){const b=m.body||{};m.sim=m.sim||[];
+  const f=(k,ph,v)=>`<input class="fi" type="number" inputmode="decimal" data-simb="${k}" placeholder="${ph}" value="${v==null?'':v}" style="flex:1;min-width:0">`;
+  return `<div class="row"><button class="x" style="font-size:14px" data-act="amem" data-id="${m.id}">◀ 회원정보</button><button class="x" data-act="close">✕</button></div>
+  <b class="h2">${esc(m.name)}${m.temp?' (임시)':''} · 티어 시뮬레이터</b>
+  <div class="mu" style="margin:4px 0 8px;line-height:1.6">종목·무게·횟수를 바꾸면 이 회원 체격 기준 티어가 바로 계산돼요. 기록으로 저장되지 않아요. 덤벨은 한 손 무게로 넣어 주세요.</div>
+  <div class="pn"><div class="row" style="gap:6px"><select class="fi" data-simb="sex" style="flex:1"><option value="">성별</option><option value="M"${b.sex==='M'?' selected':''}>남</option><option value="F"${b.sex==='F'?' selected':''}>여</option></select>${f('age','나이',b.age)}</div>
+  <div class="row" style="gap:6px;margin-top:6px">${f('heightCm','신장 cm',b.heightCm)}${f('bodyKg','체중 kg',b.bodyKg)}${f('bf','체지방 %(선택)',b.bf)}</div></div>
+  ${m.sim.map((r,i)=>`<div class="pn" style="padding:8px 10px"><div class="row" style="gap:6px;align-items:center"><select class="fi" data-sim="${i}|id" style="flex:1;min-width:0">${simOpts(r.id)}</select><button class="x" data-act="simdel" data-i="${i}" aria-label="삭제">✕</button></div>
+   <div class="row" style="gap:6px;margin-top:6px;align-items:center"><input class="fi" type="number" inputmode="decimal" step="0.5" min="0" data-sim="${i}|w" placeholder="kg" value="${r.w||''}" style="flex:1;min-width:0"><span class="mu">kg ×</span><input class="fi" type="number" inputmode="numeric" min="0" data-sim="${i}|r" placeholder="회" value="${r.r||''}" style="flex:1;min-width:0"><span class="mu">회</span></div>
+   <div id="simr${i}" style="margin-top:6px;min-height:34px">${simRes(m,r)}</div></div>`).join('')}
+  <button class="btn ghost" data-act="simadd" data-id="${m.id}">+ 종목 추가</button>`}
 function proxyHTML(m){
   const R=window.RuneTier,b=m.body||{};
   const f=(id,ph,v,t)=>`<input id="${id}" class="fi" type="${t||'number'}" inputmode="decimal" placeholder="${ph}" value="${v==null?'':v}" style="flex:1;min-width:0">`;
@@ -2154,7 +2391,7 @@ function memInfo0(id){
     const rl=rn.map(x=>`<div class='mu'>${P[EX[x.id].part]} ${EX[x.id].name}${exEmb(x,m,18)} · ${x.sets.map(s=>(s.t==='W'?'W ':s.t==='F'?'F ':'')+setTxt(s)+(s.done?'✔':'')).join(' ')}${x.note?' · 📝 '+esc(x.note):''}</div>`).join('')||`<div class='mu'>룬 페이지 기록 없음</div>`;
     const blk=(t,v)=>v?`<div class='sp'><span class='mu'>${t}</span><br>${esc(v)}</div>`:'';
     return `<div class='pn'><div class='row'><b class='h2'>${e.n}회차</b><span class='mu'>${e.d.slice(5).replace('-','/')} ${it.time}</span></div><div style='margin:8px 0;font-size:15px'><span class='mu'>과제</span><br><b>${esc(it.hw)||`<span class='mu'>없음</span>`}</b>${it.hw&&it.hwDone?' ✔ 인지':''}</div><details><summary class='mu'>특이사항 · 룬 페이지 · 수업 내용 보기</summary>${blk('특이사항',it.special)}<div class='sp'><span class='mu'>룬 페이지</span>${rl}</div>${blk('수업 내용',it.memo)}${blk('다음 수업 목표',it.goal)}</details></div>`}).join('');
-  return `<div class='row'><div style='min-width:0'><b class='h2'>${esc(m.name)}${m.temp?' (임시)':''}</b>${togetherTxt(m)?`<div class='mu' data-rgs='${m.id}' style='font-size:11px'>${togetherTxt(m)}</div>`:''}</div><div style='display:flex;gap:6px;align-items:center;flex-shrink:0;white-space:nowrap'>${m.uid?`<button class='btn sm' data-act='mrec' data-id='${m.id}'>전적</button>`:''}<button class='btn sm' data-act='mcal' data-id='${m.id}'>캘린더</button><button class='btn sm' data-act='mmap' data-id='${m.id}'>월드맵</button>${m.uid?'':`<button class='btn ghost sm' data-act='medit' data-id='${m.id}'>수정</button>`}<button class='x' data-act='close'>✕</button></div></div><div class='pn' style='margin-top:10px;border-color:var(--gd)'><div class='row'><b class='h2'>다음 수업 중점사항 · 도전과제</b><span class='mu'>${nx}회차 예정</span></div><textarea class='fi' rows='3' data-mf='${m.id}' style='width:100%;margin-top:8px' placeholder='(다음 수업에서 집중할 점, 도전할 목표를 적어요)'>${esc(m.focus)}</textarea>${lg?`<div class='mu' style='margin-top:6px'>최근 수업에서 적은 다음 수업 목표: ${esc(lg)}</div>`:''}</div>${rmMemCard(m)}${regCard(m)}<div class='mu' style='margin:10px 0 4px'>수업 흐름 (최신순)</div>${hist||`<div class='mu'>아직 수업 기록이 없어요</div>`}`;
+  return `<div class='row'><div style='min-width:0'><b class='h2'>${esc(m.name)}${m.temp?' (임시)':''}</b>${togetherTxt(m)?`<div class='mu' data-rgs='${m.id}' style='font-size:11px'>${togetherTxt(m)}</div>`:''}</div><div style='display:flex;gap:6px;align-items:center;flex-shrink:0;white-space:nowrap'>${m.uid?`<button class='btn sm' data-act='mrec' data-id='${m.id}'>전적</button>`:''}<button class='btn sm' data-act='mcal' data-id='${m.id}'>캘린더</button><button class='btn sm' data-act='mmap' data-id='${m.id}'>월드맵</button><button class='btn sm' data-act='msim' data-id='${m.id}'>🧮 시뮬</button>${m.uid?'':`<button class='btn ghost sm' data-act='medit' data-id='${m.id}'>수정</button>`}<button class='x' data-act='close'>✕</button></div></div>${gradeBar(m)}<div class='pn' style='margin-top:10px;border-color:var(--gd)'><div class='row'><b class='h2'>다음 수업 중점사항 · 도전과제</b><span class='mu'>${nx}회차 예정</span></div><textarea class='fi' rows='3' data-mf='${m.id}' style='width:100%;margin-top:8px' placeholder='(다음 수업에서 집중할 점, 도전할 목표를 적어요)'>${esc(m.focus)}</textarea>${lg?`<div class='mu' style='margin-top:6px'>최근 수업에서 적은 다음 수업 목표: ${esc(lg)}</div>`:''}</div>${rmMemCard(m)}${regCard(m)}<div class='mu' style='margin:10px 0 4px'>수업 흐름 (최신순)</div>${hist||`<div class='mu'>아직 수업 기록이 없어요</div>`}`;
 }
 const SB_URL='https://vpdemapnpunsuxqdffgn.supabase.co',SB_KEY='sb_publishable_fonyE5eloRwvXb7hacPTow_d6JR0zMv',APP_URL='https://upvible.github.io/Rune-PT/';
 const syncTxt=()=>({off:'이 기기에만 저장',ok:'저장됨',err:'저장 실패 · 다시 시도 중',busy:'저장 중…'}[SYNC]||'');
@@ -2674,7 +2911,7 @@ function openPick(i,lu){
 /* ---- 세트 입력 옆 실시간 구간 안내: 이 무게에서 몇 회면 노말 / 하드 / 슬레이어인지 (내 현재 티어 기준, 참고용) ---- */
 let RZ=null,RDL=false;
 function zoneCalc(x){
-  const R=window.RuneTier,e=EX[x.id];if(!e||e.missing)return null;
+  const R=window.RuneTier,e=EX[x.id];if(!e||e.missing||e.part==='cardio')return null;
   const mem=memberCalc();if(!mem.bodyKg||!mem.sex||mem.age==null)return null;
   const m=R.metaFor(e.name,{machine:e.m,region:e.part==='leg'?'lower':'upper'});
   if(!m||m.kind==='dumbbell')return null;
@@ -2704,6 +2941,7 @@ function zoneInner0(x,i){
 const zoneRow=(x,i)=>`<div class="hn" id="hn${i}">${zoneInner(x,i)}</div>`;
 function expGauge(x){const nm=EX[x.id]&&EX[x.id].name,h=nm==='풀업'?'<div class="mu" style="margin-bottom:4px">kg 칸 = 추가 무게 (0 = 맨몸)</div>':nm==='어시스티드 풀업 머신'?'<div class="mu" style="margin-bottom:4px">kg 칸 = 보조 무게 (클수록 쉬워요)</div>':'';return h+expGauge0(x)}
 function expGauge0(x){
+  if(isCar(x.id))return '';
   try{const R=window.RuneTier,e=EX[x.id],m=R.metaFor(e.name,{machine:e.m,region:e.part==='leg'?'lower':'upper'}),r=tierRows().find(q=>q.m.id===m.id);
     if(!r)return `<div class="eg"><div class="egt"><span>다음 ★까지</span><b>첫 기록을 저장하면 시작돼요</b></div><div class="egb"><i style="width:0%"></i></div></div>`;
     const p=r.p,mu=R.multOf(S.level),pc=Math.round(p.pct*100);
@@ -2721,15 +2959,16 @@ function recHTML(){
   if(RFc!==RC){RF=-1;RFc=RC}
   if(!(RF>=0&&x.sets[RF]&&x.sets[RF].t!=='W')){RF=x.sets.findIndex(s=>s.t!=='W'&&!s.done);if(RF<0)RF=x.sets.findIndex(s=>s.t!=='W')}
   const nd=x.sets.filter(s=>s.done).length;
-  const dbx=isDB(x.id),LRm=dbx&&x.sets.some(s=>s.lr);
+  const CARD=isCar(x.id),CUN=carU(x.id),dbx=!CARD&&isDB(x.id),LRm=dbx&&x.sets.some(s=>s.lr);
   if(LRm)x.sets.forEach(s=>{if(!s.lr){s.lr=1;s.w2=s.w;s.r2=s.r}});
   const DBT=dbx?`<div class="seg" style="margin:6px 0"><button class="${LRm?'':'on'}" data-act="dbm" data-v="0">양손 <small>(한 손 기준)</small></button><button class="${LRm?'on':''}" data-act="dbm" data-v="1">L/R 따로 <small>(편측·원암)</small></button></div>`:'';
-  return recTabs()+expGauge(x)+`<div class="row"><div><b class="h2">${EX[x.id].name}</b><div class="mu">${P[EX[x.id].part]} · ${BIG[EX[x.id].part]?'대근육':'소근육'}</div></div><button class="x" data-act="close">✕</button></div>
-  <div class="rtop"><div><span>볼륨</span><b id="rv">${fmt(vol(x.sets,x.id))}</b> kg</div><div><span>완료 세트</span><b>${nd}</b></div><button class="pill" id="rest" data-act="rest0">${rtTxt()}</button></div>
+  return recTabs()+expGauge(x)+`<div class="row"><div><b class="h2">${EX[x.id].name}</b><div class="mu">${P[EX[x.id].part]}${CARD?' · 유산소':' · '+(BIG[EX[x.id].part]?'대근육':'소근육')}</div></div><button class="x" data-act="close">✕</button></div>
+  ${posCard(x.id)}
+  <div class="rtop"><div><span>${CARD?'거리':'볼륨'}</span><b id="rv">${CARD?(Math.round(vol(x.sets,x.id)*100)/100):fmt(vol(x.sets,x.id))}</b> ${CARD?'km':'kg'}</div><div><span>완료 세트</span><b>${nd}</b></div><button class="pill" id="rest" data-act="rest0">${rtTxt()}</button></div>
   ${DBT}
-  <div class="r2h${LRm?' lr':''}"><span>세트</span>${LRm?'<span>왼 kg</span><span>왼 회</span><span>오른 kg</span><span>오른 회</span>':`<span>이전</span><span>${EX[x.id].name==='푸시업'?'자세':'kg'}</span><span>회</span>`}<span>✓</span></div>
+  <div class="r2h${LRm?' lr':''}"><span>세트</span>${LRm?'<span>왼 kg</span><span>왼 회</span><span>오른 kg</span><span>오른 회</span>':`<span>이전</span><span>${CARD?CUN[0]:EX[x.id].name==='푸시업'?'자세':'kg'}</span><span>${CARD?CUN[1]:'회'}</span>`}<span>✓</span></div>
   ${x.sets.map((s,i)=>{const n=x.sets.slice(0,i+1).filter(q=>q.t==='M').length;const p=pv&&pv.sets[i];
-  return `<div class="sw" data-i="${i}"><button class="sdl" data-act="sdel" data-i="${i}">삭제하기</button><div class="r2${s.done?' dn':''}${LRm?' lr':''}"><button class="ty ${s.t}" data-act="ty" data-i="${i}">${s.t==='M'?'M'+n:s.t}</button>${LRm?'':p?`<button class="pvb" data-act="pfill" data-i="${i}" title="누르면 지난번 값이 입력돼요">${setTxt(p)}</button>`:'<span class="pvb">-</span>'}${EX[x.id].name==='푸시업'?(s.v=s.v||'floor',`<select data-f="v" data-i="${i}" aria-label="푸시업 자세" style="min-width:0;font-size:13px">${PU_V.map(v=>`<option value="${v[0]}"${s.v===v[0]?' selected':''}>${v[1]}</option>`).join('')}</select>`):`<input type="number" inputmode="decimal" step="0.5" min="0" class="${s.tmp?'tmp':''}" value="${s.w}" data-f="w" data-i="${i}" aria-label="무게">`}<input type="number" inputmode="numeric" min="0" class="${(s.tr!==undefined?s.tr:s.tmp)?'tmp':''}" value="${s.r}" data-f="r" data-i="${i}" aria-label="횟수">${LRm?`<input type="number" inputmode="decimal" step="0.5" min="0" class="${s.tmp?'tmp':''}" value="${s.w2}" data-f="w2" data-i="${i}" aria-label="오른쪽 무게"><input type="number" inputmode="numeric" min="0" class="${(s.tr!==undefined?s.tr:s.tmp)?'tmp':''}" value="${s.r2}" data-f="r2" data-i="${i}" aria-label="오른쪽 횟수">`:''}<button class="ckb" data-act="sck" data-i="${i}" aria-label="세트 완료">✓</button></div></div>${RF===i?zoneRow(x,i):''}`}).join('')}
+  return `<div class="sw" data-i="${i}"><button class="sdl" data-act="sdel" data-i="${i}">삭제하기</button><div class="r2${s.done?' dn':''}${LRm?' lr':''}"><button class="ty ${s.t}" data-act="ty" data-i="${i}">${s.t==='M'?'M'+n:s.t}</button>${LRm?'':p?`<button class="pvb" data-act="pfill" data-i="${i}" title="누르면 지난번 값이 입력돼요">${setTxt(p)}</button>`:'<span class="pvb">-</span>'}${EX[x.id].name==='푸시업'?(s.v=s.v||'floor',`<select data-f="v" data-i="${i}" aria-label="푸시업 자세" style="min-width:0;font-size:13px">${PU_V.map(v=>`<option value="${v[0]}"${s.v===v[0]?' selected':''}>${v[1]}</option>`).join('')}</select>`):`<input type="number" inputmode="decimal" step="0.5" min="0" class="${s.tmp?'tmp':''}" value="${s.w}" data-f="w" data-i="${i}" aria-label="${CARD?'거리':'무게'}">`}<input type="number" inputmode="numeric" min="0" class="${(s.tr!==undefined?s.tr:s.tmp)?'tmp':''}" value="${s.r}" data-f="r" data-i="${i}" aria-label="횟수">${LRm?`<input type="number" inputmode="decimal" step="0.5" min="0" class="${s.tmp?'tmp':''}" value="${s.w2}" data-f="w2" data-i="${i}" aria-label="오른쪽 무게"><input type="number" inputmode="numeric" min="0" class="${(s.tr!==undefined?s.tr:s.tmp)?'tmp':''}" value="${s.r2}" data-f="r2" data-i="${i}" aria-label="오른쪽 횟수">`:''}<button class="ckb" data-act="sck" data-i="${i}" aria-label="세트 완료">✓</button></div></div>${RF===i?zoneRow(x,i):''}`}).join('')}
   <input type="text" data-nf="1" placeholder="(통증 · 자극 부위 · 궁금증을 적어요)" value="${esc(x.note)}" style="margin:6px 0;border-style:dashed">${EX[x.id].name==='푸시업'?'<div class="mu" style="margin:4px 0">자세를 고르면 체중의 약 40%(인클라인 높음)~78%(디클라인 60cm)를 든 것으로 계산해요. 낮은 인클라인일수록 쉽고, 디클라인일수록 어려워요.</div>':''}<div class="mu" style="margin:4px 0 10px">W 웜업 · M 메인 · F 실패 (왼쪽 버튼을 누르면 바뀌어요). 웜업은 볼륨에서 빠져요. <b>이전</b>을 누르면 지난번 값이 입력되고, 회색 값은 ✓만 눌러도 그대로 저장돼요. 세트를 왼쪽으로 밀면 삭제 버튼이 나와요. 지금 입력 중인 메인 세트 아래 칩은 이 무게에서 몇 회면 리커버리(초록, 컨디션이 안 좋을 때 권장)·노말·하드·슬레이어인지 알려 주는 참고 지표예요(내 현재 티어 기준). 칩을 누르면 그 횟수가 입력돼요.${pv?` 이전 기록: ${pv.d}`:''}</div>
   <div class="row" style="margin-bottom:8px"><button class="btn ghost" data-act="sadd" data-t="W">+ 웜업 세트</button><button class="btn ghost" data-act="sadd" data-t="M">+ 메인 세트</button></div><button class="btn" data-act="close">기록 완료</button>
   ${RDL?`<div class="wb red" role="alert" style="display:block;margin-top:8px"><b>완료한 세트 ${nd}개의 기록도 함께 사라져요. 정말 삭제할까요?</b><div style="display:flex;gap:6px;margin-top:6px"><button class="btn sm" style="background:#d8372a;border-color:#d8372a" data-act="rdel">네, 삭제해요</button><button class="btn ghost sm" data-act="rdelc">취소</button></div></div>`:`<button class="btn ghost" style="margin-top:8px;color:#e5484d;border-color:#e5484d66" data-act="rdel">이 운동 삭제</button>`}`;
@@ -2871,6 +3110,14 @@ const A={
   aq2:d=>{const it=plan(d.d).find(x=>x.id===d.id);if(!it)return;const k=d.k==='hw'?'hwDone':'spDone';it[k]=!it[k];persist();render()},
   aopen:d=>{ADM.date=d.d;A.aslot({t:d.t})},
   amem:d=>{openM(memInfo(d.id))},
+  stp:d=>{ST.p=d.v;stRe()},stm:d=>{ST.m=d.v;stRe()},stexm:d=>{ST.exm=d.v;stRe()},stbm:d=>{ST.bm=d.v;stRe()},stmo:d=>{ST.mo=d.v;stRe()},
+  stv:d=>{ST.v=d.v;window.scrollTo(0,0);render()},
+  stex:d=>{ST.v='ex';ST.ex=d.id;window.scrollTo(0,0);render()},
+  mgrade:d=>{const m=AD().members.find(x=>x.id===d.id);if(!m)return;const v=+d.v;if(m.grade===v)delete m.grade;else m.grade=v;persist();openM(memInfo(m.id));const l=$('#mlist');if(l)l.innerHTML=memRowsHTML();const b=$('#mgfb');if(b)b.innerHTML=gfBar();toast(m.grade?GR[m.grade].t+' · '+GR[m.grade].d+'로 분류했어요':'등급을 해제했어요')},
+  mgf:d=>{MGF=d.v;const l=$('#mlist');if(l)l.innerHTML=memRowsHTML();const b=$('#mgfb');if(b)b.innerHTML=gfBar()},
+  msim:d=>{const m=AD().members.find(x=>x.id===d.id);if(!m)return;m.sim=m.sim||[];if(!m.sim.length)m.sim.push({id:'',w:'',r:''});SIMM=m.id;openM(simHTML(m))},
+  simadd:d=>{const m=AD().members.find(x=>x.id===d.id);if(!m)return;m.sim.push({id:'',w:'',r:''});persist();openM(simHTML(m))},
+  simdel:d=>{const m=AD().members.find(x=>x.id===SIMM);if(!m)return;m.sim.splice(+d.i,1);persist();openM(simHTML(m))},
   rgadd:d=>{const m=AD().members.find(x=>x.id===d.id);if(!m)return;(m.reg=m.reg||[]).push({d:T});persist();openM(memInfo(d.id))},
   rgdel:d=>{const m=AD().members.find(x=>x.id===d.id);if(!m||!m.reg)return;m.reg.splice(+d.i,1);if(!m.reg.length)delete m.reg;persist();openM(memInfo(d.id))},
   rgfirst:d=>{const m=AD().members.find(x=>x.id===d.id);if(!m)return;m.since=d.d;persist();openM(memInfo(d.id))},
@@ -2960,11 +3207,14 @@ const A={
   aexp:()=>{const l=plan(ADM.date);if(!l.length){toast('보낼 수업 칸이 없어요');return}copyText('RPT1:'+btoa(unescape(encodeURIComponent(JSON.stringify({d:ADM.date,items:l})))),'코드를 복사했어요. 카톡 나와의 채팅 등으로 보내세요')},
   aimp:()=>{const raw=($('#imp').value||'').trim();try{if(!raw.startsWith('RPT1:'))throw 0;const o=JSON.parse(decodeURIComponent(escape(atob(raw.slice(5)))));const l=plan(o.d);let add=0,upd=0,skip=0;o.items.forEach(it=>{const i=l.findIndex(x=>x.id===it.id);if(i>=0){l[i]=it;upd++}else if(l.some(x=>x.time===it.time)){skip++}else{l.push(it);add++}});ADM.date=o.d;persist();render();toast(`가져왔어요 (추가 ${add}, 갱신 ${upd}, 시간 겹쳐 건너뜀 ${skip})`)}catch(e){toast('코드를 읽을 수 없어요. 처음부터 끝까지 복사했는지 확인해 주세요')}},
   aback:()=>closeEdit(),
+  trnext:()=>{const it=fi(TRN);closeM();if(!it)return;if(sendable(it)){if(S.autoSend&&sb&&UID)A.asend({id:it.id});else openM(sendAsk(it))}},
   admdone:()=>{const it=ADM.cur;if(it)it.done=true;const m=it&&memOfIt(it),can=it&&sendable(it);closeEdit();if(!it)return;
+    if(trReport(it))return;
     if(can){if(S.autoSend&&sb&&UID){A.asend({id:it.id});return}openM(sendAsk(it))}
     else toast('수업 칸에 저장했어요'+(m&&!m.uid?' · 계정 미연결이라 발송 없이 저장':''))},
   asub:d=>{const it=fi(d.id);if(!it)return;if(it.sent){toast('이미 발송된 수업이에요');return}it.done=!it.done;persist();render();
     if(!it.done){toast('제출을 취소했어요');return}
+    if(trReport(it))return;
     if(sendable(it)){if(S.autoSend&&sb&&UID)A.asend({id:it.id});else openM(sendAsk(it))}else toast('제출했어요')},
   rsc:d=>{RSC=d.v;const h=fqHTML(draft()),l=$('#fqrec');if(l&&!FQ.trim())l.innerHTML=h;if($('#pl'))pickList()},
   lkreq:async d=>{
@@ -3025,7 +3275,7 @@ const A={
   minfo:d=>{LUM=null;FSEL=null;persist();openM(memInfo(d.id))},
   mclose:()=>{LUM=null;FSEL=null;persist();closeM()},
   mphase:d=>{MQ='';ML.ph=d.v;ML.conf='';FSEL=null;mapRe()},
-  mcur:()=>{luObj().phase=ML.ph;persist();mapRe();toast('현재 과정으로 설정했어요')},
+  mcur:()=>{luObj().phase=ML.ph;persist();mapRe();toast('현재 레이더로 설정했어요')},
   mpcf:d=>{const o=luObj();if(d.k&&ML.conf===d.k){if(d.k==='clr')o.lu[ML.ph]=[];else{o.lu.early=[];o.lu.mid=[];o.lu.late=[]}ML.conf='';FSEL=null;persist();mapRe();toast('비웠어요');return}ML.conf=d.k;mapRe()},
   mrmtok:d=>{const o=luObj(),l=o.lu[ML.ph],i=l.findIndex(t=>t.id===d.id);if(i>=0)l.splice(i,1);if(FSEL===d.id)FSEL=null;persist();mapRe()},
   mcopy:d=>{const o=luObj(),to=o.lu[ML.ph];let n=0;o.lu[d.from].forEach(t=>{if(!to.some(q=>q.id===t.id)){fEnsure(o,ML.ph,t.id);n++}});persist();mapRe();toast(n?n+'개를 가져왔어요':'가져올 새 종목이 없어요')},
@@ -3120,6 +3370,10 @@ document.addEventListener('pointerup',swEnd);document.addEventListener('pointerc
 setInterval(()=>{if(RT>0){RT--;const b=$('#rest');if(b)b.textContent=rtTxt()}},1000);
 document.addEventListener('input',e=>{
   const t=e.target;
+  if(t.dataset.st==='ex'){ST.ex=t.value;stRe();return}
+  if(t.dataset.sim!==undefined||t.dataset.simb!==undefined){const m=AD().members.find(x=>x.id===SIMM);if(!m)return;
+    if(t.dataset.simb){m.body=m.body||{};const k=t.dataset.simb,v=t.value;m.body[k]=k==='sex'?v:(v===''?(k==='bf'?null:undefined):+v);persist();m.sim.forEach((r,i)=>{const e2=document.getElementById('simr'+i);if(e2)e2.innerHTML=simRes(m,r)});return}
+    const [i,k]=t.dataset.sim.split('|'),r=m.sim[+i];if(!r)return;r[k]=k==='id'?t.value:(t.value===''?'':+t.value);persist();const e2=document.getElementById('simr'+i);if(e2)e2.innerHTML=simRes(m,r);return}
   if(t.dataset.pf){OB[t.dataset.pf]=t.value;obRefresh();return}
   if(t.id==='recq'){REC.q=t.value;clearTimeout(REC.tm);REC.tm=setTimeout(async()=>{REC.feed=null;REC.members=null;await recLoad(false);const e=$('#recq');if(e){e.focus();try{e.setSelectionRange(e.value.length,e.value.length)}catch(x){}}},350);return}
   if(t.id==='mpq'){MP.q=t.value;const l=$('#mpl');if(l)l.innerHTML=mpList();return}
